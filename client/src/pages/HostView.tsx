@@ -43,6 +43,24 @@ function ConfirmModal({ msg, onYes, onNo }: { msg: string; onYes: () => void; on
 function CellEditor({ cell, onSave, onClose }: {
   cell: BoardCell; onSave: (u: Partial<BoardCell>) => void; onClose: () => void;
 }) {
+  type BankQ = { question:string; answer:string; category:string; difficulty: BoardCell["difficulty"]; points:number; hint:string; explanation:string };
+  const normalized = (): BankQ[] => {
+    const arr = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank : [];
+    const mapped = arr.filter((x:any)=>x?.question).map((x:any)=>({
+      question: String(x.question||"").trim(),
+      answer: String(x.answer||"").trim(),
+      category: String(x.category||"غير مصنف").trim() || "غير مصنف",
+      difficulty: (x.difficulty==="easy"||x.difficulty==="medium"||x.difficulty==="hard") ? x.difficulty : "medium",
+      points: Number(x.points)||1,
+      hint: String(x.hint||""),
+      explanation: String(x.explanation||""),
+    }));
+    if (mapped.length) return mapped;
+    if (cell.question.trim()) return [{ question:cell.question, answer:cell.answer, category:cell.category||"غير مصنف", difficulty:cell.difficulty, points:cell.points||1, hint:cell.hint||"", explanation:cell.explanation||"" }];
+    return [];
+  };
+  const [questionBank, setQuestionBank] = useState<BankQ[]>(normalized());
+  const [editingIndex, setEditingIndex] = useState<number>(-1);
   const [q, setQ] = useState(cell.question);
   const [a, setA] = useState(cell.answer);
   const [cat, setCat] = useState(cell.category);
@@ -54,7 +72,17 @@ function CellEditor({ cell, onSave, onClose }: {
   const save = () => {
     if (!q.trim()) { showToast.error("نص السؤال مطلوب"); return; }
     if (!a.trim()) { showToast.error("الإجابة الصحيحة مطلوبة"); return; }
-    onSave({ question: q.trim(), answer: a.trim(), category: cat.trim(), difficulty: diff, points: Number(pts)||1, hint: hint.trim(), explanation: expl.trim() });
+    const next = [...questionBank];
+    const payload = { question: q.trim(), answer: a.trim(), category: (cat.trim()||"غير مصنف"), difficulty: diff, points: Number(pts)||1, hint: hint.trim(), explanation: expl.trim() } as BankQ;
+    if (editingIndex >= 0) next[editingIndex] = payload;
+    else {
+      if (next.length >= 50) { showToast.warning("وصلت إلى الحد الأقصى لهذا الحرف: 50 سؤالًا."); return; }
+      next.push(payload);
+    }
+    setQuestionBank(next);
+    setEditingIndex(next.length-1);
+    onSave({ question: next[0].question, answer: next[0].answer, category: next[0].category, difficulty: next[0].difficulty, points: next[0].points, hint: next[0].hint, explanation: next[0].explanation, ...( { questionBank: next } as any) });
+    showToast.success("تم حفظ السؤال");
   };
 
   return (
@@ -65,6 +93,20 @@ function CellEditor({ cell, onSave, onClose }: {
           <button onClick={onClose} style={{ background:"none", border:"none", color:"#64748b", fontSize:"1.2rem" }}>✕</button>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem" }}>
+          <div style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.6rem" }}>
+            <div style={{ fontSize:"0.8rem", fontWeight:700, color:"#f59e0b", marginBottom:"0.35rem" }}>بنك أسئلة الحرف</div>
+            <div style={{ fontSize:"0.75rem", color:"#94a3b8", marginBottom:"0.45rem" }}>عدد الأسئلة: {questionBank.length} / 50</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.3rem", maxHeight:130, overflowY:"auto" }}>
+              {questionBank.map((item, i)=>(
+                <div key={i} style={{ display:"flex", gap:"0.35rem", alignItems:"center" }}>
+                  <button className="btn-secondary" style={{ fontSize:"0.68rem", padding:"0.2rem 0.45rem" }} onClick={()=>{ setEditingIndex(i); setQ(item.question); setA(item.answer); setCat(item.category); setDiff(item.difficulty); setPts(item.points); setHint(item.hint); setExpl(item.explanation); }}>تعديل</button>
+                  <button className="btn-danger" style={{ fontSize:"0.68rem", padding:"0.2rem 0.45rem" }} onClick={()=>{ const next=questionBank.filter((_,ix)=>ix!==i); setQuestionBank(next); const first=next[0]; onSave(first?{ question:first.question, answer:first.answer, category:first.category, difficulty:first.difficulty, points:first.points, hint:first.hint, explanation:first.explanation, ...( { questionBank: next } as any)}:{ question:"", answer:"", category:"", difficulty:"easy", points:1, hint:"", explanation:"", ...( { questionBank: [] } as any)}); }}>حذف</button>
+                  <div style={{ fontSize:"0.75rem", color:"#cbd5e1", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.question}</div>
+                </div>
+              ))}
+            </div>
+            <button className="btn-gold" style={{ fontSize:"0.72rem", marginTop:"0.45rem" }} onClick={()=>{ setEditingIndex(-1); setQ(""); setA(""); setCat("غير مصنف"); setDiff("medium"); setPts(1); setHint(""); setExpl(""); }}>إضافة سؤال لهذا الحرف</button>
+          </div>
           <div>
             <label style={lbl}>نص السؤال *</label>
             <textarea value={q} onChange={e=>setQ(e.target.value)} rows={3} placeholder="اكتب نص السؤال هنا..." className="kc-input" style={{ resize:"vertical" }} />
@@ -259,11 +301,13 @@ export default function HostView() {
     } else {
       if (!cell.question.trim()) { showToast.warning("لا يوجد سؤال محفوظ لهذا الحرف بعد."); return; }
       if (cell.claimedBy !== 0) { showToast.info("هذا الحرف محجوز بالفعل."); return; }
+      const bank = Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank : [{ question: cell.question, answer: cell.answer, category: cell.category, difficulty: cell.difficulty, points: cell.points, hint: cell.hint, explanation: cell.explanation }];
+      const first = bank[0];
       const aq: ActiveQuestion = {
         cellId: cell.id, cellLabel: cell.label,
-        question: cell.question, answer: cell.answer,
-        category: cell.category, difficulty: cell.difficulty,
-        points: cell.points, hint: cell.hint, explanation: cell.explanation,
+        question: first.question, answer: first.answer,
+        category: first.category, difficulty: first.difficulty,
+        points: first.points, hint: first.hint, explanation: first.explanation,
       };
       push({
         activeQuestion: aq, selectedCellId: cell.id,
@@ -634,6 +678,8 @@ export default function HostView() {
               <div className="section-title">قائمة الحروف والأسئلة</div>
               <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
                 {sortedBoard(room.board).map(cell=>(
+                  (() => { const count = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank.length : (cell.question ? 1 : 0);
+                  return (
                   <div key={cell.id} onClick={()=>setEditingCell(cell)}
                     style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.55rem 0.75rem",
                       borderRadius:"10px", cursor:"pointer", background:"#141e2d", border:"1.5px solid #1a2332",
@@ -647,11 +693,12 @@ export default function HostView() {
                     <div style={{ flex:1, minWidth:0 }}>
                       {cell.question
                         ? <><div style={{ fontSize:"0.85rem", color:"#f0ede8", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cell.question}</div>
-                            <div style={{ fontSize:"0.72rem", color:"#64748b" }}>{cell.category && `${cell.category} • `}{cell.difficulty==="easy"?"سهل":cell.difficulty==="medium"?"متوسط":"صعب"} • {cell.points} نقطة</div></>
+                            <div style={{ fontSize:"0.72rem", color:"#64748b" }}>{cell.category && `${cell.category} • `}{cell.difficulty==="easy"?"سهل":cell.difficulty==="medium"?"متوسط":"صعب"} • عدد الأسئلة: {count}</div></>
                         : <div style={{ fontSize:"0.85rem", color:"#3d5068" }}>هذا الحرف لا يحتوي على سؤال بعد</div>}
                     </div>
                     <span style={{ fontSize:"0.75rem", color: cell.question ? "#22c55e" : "#ef4444" }}>{cell.question?"✓":"!"}</span>
                   </div>
+                  ); })()
                 ))}
               </div>
             </div>
