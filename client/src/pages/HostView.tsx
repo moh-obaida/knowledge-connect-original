@@ -207,7 +207,7 @@ export default function HostView() {
 
   // Create room
   const handleCreate = async () => {
-    if (!isFirebaseConfigured()) { showToast.error("Firebase غير مُهيَّأ — أضف إعدادات Firebase في ملف .env"); return; }
+    if (!isFirebaseConfigured()) { showToast.error("تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا. تحقق من إعدادات المشروع"); return; }
     setCreating(true);
     try {
       const code = await generateUniqueCode();
@@ -389,13 +389,13 @@ export default function HostView() {
         <div style={{ maxWidth:480, textAlign:"center" }}>
           <div style={{ fontSize:"3rem", marginBottom:"1rem" }}>🔥</div>
           <div style={{ fontSize:"1.5rem", fontWeight:800, color:"#f59e0b", marginBottom:"0.75rem" }}>وصلة المعرفة</div>
-          <div style={{ fontSize:"1rem", fontWeight:600, color:"#ef4444", marginBottom:"1rem" }}>Firebase غير مُهيَّأ</div>
+          <div style={{ fontSize:"1rem", fontWeight:600, color:"#ef4444", marginBottom:"1rem" }}>تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا.</div>
           <div style={{ background:"#0f1623", border:"1.5px solid #1a2332", borderRadius:"16px", padding:"1.5rem", textAlign:"right" }}>
             <div className="section-title">خطوات الإعداد</div>
             <ol style={{ color:"#94a3b8", fontSize:"0.85rem", lineHeight:2, paddingRight:"1.25rem" }}>
               <li>أنشئ مشروع Firebase على <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" style={{ color:"#f59e0b" }}>console.firebase.google.com</a></li>
               <li>فعّل Realtime Database</li>
-              <li>أنشئ ملف <code style={{ color:"#f59e0b" }}>.env</code> وأضف متغيرات Firebase</li>
+              <li>أنشئ ملف <code style={{ color:"#f59e0b" }}>إعدادات المشروع</code> وأضف متغيرات الخدمة</li>
               <li>أعد تشغيل الخادم</li>
             </ol>
           </div>

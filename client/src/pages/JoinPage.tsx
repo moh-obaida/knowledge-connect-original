@@ -26,7 +26,7 @@ export default function JoinPage() {
     const name = playerName.trim();
     if (!code || code.length !== 6) { showToast.error("أدخل رمز الغرفة المكوّن من 6 أرقام"); return; }
     if (!name) { showToast.error("الرجاء إدخال اسمك."); return; }
-    if (!isFirebaseConfigured()) { showToast.error("Firebase غير مُهيَّأ — راجع README"); return; }
+    if (!isFirebaseConfigured()) { showToast.error("تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا. راجع ملف التعليمات"); return; }
     setLoading(true);
     try {
       const playerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
