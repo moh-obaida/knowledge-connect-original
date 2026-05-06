@@ -550,7 +550,7 @@ export default function HostView() {
     });
     const totalQuestions = boardBanks.reduce((n,b)=>n+b.questionBank.length,0);
     const cats = Array.from(new Set(boardBanks.flatMap(b=>b.questionBank.map((q:any)=>q.category||"غير مصنف"))));
-    const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:templateName.trim(), categories:cats as string[], level:"متوسط", questions:boardBanks.flatMap(b=>b.questionBank.map((q:any)=>q.question)).slice(0, 40), boardBanks, createdAt:new Date().toISOString(), userCreated:true };
+    const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:templateName.trim(), categories:cats as string[], level:"متوسط", questions:boardBanks.flatMap(b=>b.questionBank.map((q:any)=>q.question)), boardBanks, createdAt:new Date().toISOString(), userCreated:true };
     const next=[tpl, ...communityTemplates];
     setCommunityTemplates(next);
     localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
