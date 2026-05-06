@@ -43,6 +43,24 @@ function ConfirmModal({ msg, onYes, onNo }: { msg: string; onYes: () => void; on
 function CellEditor({ cell, onSave, onClose }: {
   cell: BoardCell; onSave: (u: Partial<BoardCell>) => void; onClose: () => void;
 }) {
+  type BankQ = { question:string; answer:string; category:string; difficulty: BoardCell["difficulty"]; points:number; hint:string; explanation:string };
+  const normalized = (): BankQ[] => {
+    const arr = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank : [];
+    const mapped = arr.filter((x:any)=>x?.question).map((x:any)=>({
+      question: String(x.question||"").trim(),
+      answer: String(x.answer||"").trim(),
+      category: String(x.category||"غير مصنف").trim() || "غير مصنف",
+      difficulty: (x.difficulty==="easy"||x.difficulty==="medium"||x.difficulty==="hard") ? x.difficulty : "medium",
+      points: Number(x.points)||1,
+      hint: String(x.hint||""),
+      explanation: String(x.explanation||""),
+    }));
+    if (mapped.length) return mapped;
+    if (cell.question.trim()) return [{ question:cell.question, answer:cell.answer, category:cell.category||"غير مصنف", difficulty:cell.difficulty, points:cell.points||1, hint:cell.hint||"", explanation:cell.explanation||"" }];
+    return [];
+  };
+  const [questionBank, setQuestionBank] = useState<BankQ[]>(normalized());
+  const [editingIndex, setEditingIndex] = useState<number>(-1);
   const [q, setQ] = useState(cell.question);
   const [a, setA] = useState(cell.answer);
   const [cat, setCat] = useState(cell.category);
@@ -54,7 +72,21 @@ function CellEditor({ cell, onSave, onClose }: {
   const save = () => {
     if (!q.trim()) { showToast.error("نص السؤال مطلوب"); return; }
     if (!a.trim()) { showToast.error("الإجابة الصحيحة مطلوبة"); return; }
-    onSave({ question: q.trim(), answer: a.trim(), category: cat.trim(), difficulty: diff, points: Number(pts)||1, hint: hint.trim(), explanation: expl.trim() });
+    const firstAnswerChar = a.trim().charAt(0);
+    if (firstAnswerChar && firstAnswerChar !== cell.label) {
+      showToast.warning("تنبيه: الإجابة لا تبدأ بالحرف المحدد.");
+    }
+    const next = [...questionBank];
+    const payload = { question: q.trim(), answer: a.trim(), category: (cat.trim()||"غير مصنف"), difficulty: diff, points: Number(pts)||1, hint: hint.trim(), explanation: expl.trim() } as BankQ;
+    if (editingIndex >= 0) next[editingIndex] = payload;
+    else {
+      if (next.length >= 50) { showToast.warning("وصلت إلى الحد الأقصى لهذا الحرف: 50 سؤالًا."); return; }
+      next.push(payload);
+    }
+    setQuestionBank(next);
+    setEditingIndex(next.length-1);
+    onSave({ question: next[0].question, answer: next[0].answer, category: next[0].category, difficulty: next[0].difficulty, points: next[0].points, hint: next[0].hint, explanation: next[0].explanation, ...( { questionBank: next } as any) });
+    showToast.success("تم حفظ السؤال");
   };
 
   return (
@@ -65,6 +97,20 @@ function CellEditor({ cell, onSave, onClose }: {
           <button onClick={onClose} style={{ background:"none", border:"none", color:"#64748b", fontSize:"1.2rem" }}>✕</button>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem" }}>
+          <div style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.6rem" }}>
+            <div style={{ fontSize:"0.8rem", fontWeight:700, color:"#f59e0b", marginBottom:"0.35rem" }}>بنك أسئلة الحرف</div>
+            <div style={{ fontSize:"0.75rem", color:"#94a3b8", marginBottom:"0.45rem" }}>عدد الأسئلة: {questionBank.length} / 50</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.3rem", maxHeight:130, overflowY:"auto" }}>
+              {questionBank.map((item, i)=>(
+                <div key={i} style={{ display:"flex", gap:"0.35rem", alignItems:"center" }}>
+                  <button className="btn-secondary" style={{ fontSize:"0.68rem", padding:"0.2rem 0.45rem" }} onClick={()=>{ setEditingIndex(i); setQ(item.question); setA(item.answer); setCat(item.category); setDiff(item.difficulty); setPts(item.points); setHint(item.hint); setExpl(item.explanation); }}>تعديل</button>
+                  <button className="btn-danger" style={{ fontSize:"0.68rem", padding:"0.2rem 0.45rem" }} onClick={()=>{ const next=questionBank.filter((_,ix)=>ix!==i); setQuestionBank(next); const first=next[0]; onSave(first?{ question:first.question, answer:first.answer, category:first.category, difficulty:first.difficulty, points:first.points, hint:first.hint, explanation:first.explanation, ...( { questionBank: next } as any)}:{ question:"", answer:"", category:"", difficulty:"easy", points:1, hint:"", explanation:"", ...( { questionBank: [] } as any)}); }}>حذف</button>
+                  <div style={{ fontSize:"0.75rem", color:"#cbd5e1", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.question}</div>
+                </div>
+              ))}
+            </div>
+            <button className="btn-gold" style={{ fontSize:"0.72rem", marginTop:"0.45rem" }} onClick={()=>{ setEditingIndex(-1); setQ(""); setA(""); setCat("غير مصنف"); setDiff("medium"); setPts(1); setHint(""); setExpl(""); }}>إضافة سؤال لهذا الحرف</button>
+          </div>
           <div>
             <label style={lbl}>نص السؤال *</label>
             <textarea value={q} onChange={e=>setQ(e.target.value)} rows={3} placeholder="اكتب نص السؤال هنا..." className="kc-input" style={{ resize:"vertical" }} />
@@ -110,6 +156,77 @@ function CellEditor({ cell, onSave, onClose }: {
   );
 }
 const lbl: React.CSSProperties = { display:"block", fontSize:"0.8rem", fontWeight:600, color:"#94a3b8", marginBottom:"0.35rem" };
+
+type StarterTemplate = {
+  id: string;
+  name: string;
+  categories: string[];
+  level: "سهل" | "متوسط" | "صعب";
+  questions: string[];
+  boardBanks?: Array<{ cellId:string; label:string; questionBank:any[] }>;
+  createdAt?: string;
+  userCreated?: boolean;
+};
+type TemplateQuestionItem = {
+  letter?: string;
+  question: string;
+  answer: string;
+  category?: string;
+  difficulty?: BoardCell["difficulty"];
+  hint?: string;
+  explanation?: string;
+};
+const COMMUNITY_TEMPLATES_KEY = "knowledgeConnectCommunityTemplates";
+const ARABIC_LETTERS_FULL = ["أ","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ع","غ","ف","ق","ك","ل","م","ن","هـ","و","ي"];
+const LETTER_WORDS: Record<string, string[]> = {
+  "أ":["أمل","أدب","أفق"],"ب":["بدر","بيت","باب"],"ت":["تفاح","تعاون","تاريخ"],"ث":["ثعلب","ثقة","ثواب"],"ج":["جبل","جوال","جائزة"],"ح":["حكمة","حياة","حب"],
+  "خ":["خريطة","خبر","خيار"],"د":["درس","دفتر","دور"],"ذ":["ذهب","ذوق","ذكاء"],"ر":["ربيع","رياضة","رسالة"],"ز":["زيتون","زمن","زهر"],"س":["سلام","سؤال","سماء"],
+  "ش":["شمس","شجاعة","شبكة"],"ص":["صبر","صداقة","صورة"],"ض":["ضوء","ضمان","ضاد"],"ط":["طريق","طالب","طائرة"],"ظ":["ظلال","ظرف","ظبية"],"ع":["علم","عمل","عطاء"],
+  "غ":["غيمة","غذاء","غاية"],"ف":["فكرة","فرح","فصل"],"ق":["قصة","قلم","قيمة"],"ك":["كتاب","كرة","كوكب"],"ل":["لغة","لطف","لوحة"],"م":["مدرسة","مكتبة","مستقبل"],
+  "ن":["نخلة","نجاح","نشاط"],"هـ":["هلال","هاتف","هدوء"],"و":["وردة","وعد","وطن"],"ي":["يقين","يوم","يد"],
+};
+const ARABIC_LETTER_NORMALIZE: Record<string, string> = { "أ":"ا", "إ":"ا", "آ":"ا", "ٱ":"ا", "ة":"ه", "ى":"ي" };
+const normalizeArabicLetter = (value?: string) => {
+  const ch = (value || "").trim().charAt(0);
+  return ARABIC_LETTER_NORMALIZE[ch] || ch;
+};
+const questionInitialLetter = (item: Partial<TemplateQuestionItem>) => {
+  if (item.letter) return normalizeArabicLetter(item.letter);
+  if (item.answer) return normalizeArabicLetter(item.answer);
+  return "";
+};
+const createFullLetterTemplate = (id: string, name: string, category: string, level: "سهل" | "متوسط" | "صعب", density: 2 | 3 = 2): StarterTemplate => {
+  const boardBanks = ARABIC_LETTERS_FULL.map((letter) => ({
+    cellId: "",
+    label: letter,
+    questionBank: (LETTER_WORDS[letter] || [`كلمة ${letter}`]).slice(0, density).map((ans, idx) => ({
+      letter,
+      question: idx === 0
+        ? `اذكر كلمة ${category === "تقنية" ? "تقنية " : ""}تبدأ بحرف ${letter}.`
+        : `اذكر مثالًا آخر يبدأ بحرف ${letter}.`,
+      answer: ans,
+      category,
+      difficulty: level === "سهل" ? "easy" : level === "صعب" ? "hard" : "medium",
+      points: 1,
+      hint: "",
+      explanation: "",
+    })),
+  }));
+  return { id, name, categories: [category], level, questions: boardBanks.map(b => b.questionBank[0].question), boardBanks };
+};
+const STARTER_TEMPLATES: StarterTemplate[] = [
+  createFullLetterTemplate("teen1", "تحدي الثقافة العامة", "ثقافة عامة", "متوسط", 3),
+  createFullLetterTemplate("teen2", "تحدي التقنية والذكاء الاصطناعي", "تقنية", "متوسط", 3),
+  createFullLetterTemplate("teen3", "تحدي القيم والحياة اليومية", "حياة يومية", "سهل"),
+  createFullLetterTemplate("teen4", "تحدي اللغة العربية للمراهقين", "لغة عربية", "متوسط", 3),
+  { id:"t1", name:"قالب إسلاميات مبسط", categories:["إسلاميات"], level:"سهل", questions:["ما أول أركان الإسلام؟","ما اسم أول سورة في القرآن الكريم؟","ماذا نقول قبل قراءة القرآن؟","من هو خاتم الأنبياء؟","ما اسم الكتاب الذي أنزله الله على سيدنا محمد ﷺ؟","كم عدد الصلوات المفروضة في اليوم؟","ماذا نقول عند بداية الطعام؟","ما القبلة التي يتجه إليها المسلم في الصلاة؟","ما الشهر الذي يصوم فيه المسلمون؟","ما معنى الصدق؟"] },
+  { id:"t2", name:"قالب لغة عربية للحروف", categories:["لغة عربية"], level:"سهل", questions:["اختر كلمة تبدأ بحرف الألف.","ما الحرف الأول في كلمة: باب؟","أكمل الكلمة بالحرف المناسب: _سد","اختر الكلمة المختلفة.","ما الحرف الأخير في كلمة: كتاب؟","أي كلمة تبدأ بحرف الميم؟","أكمل الكلمة: قـ_ر","ما الحرف الأول في كلمة: وردة؟","أي كلمة تحتوي على حرف السين؟","اختر كلمة تنتهي بحرف النون."] },
+  { id:"t3", name:"قالب رياضيات سريع", categories:["رياضيات"], level:"متوسط", questions:["ما ناتج ٣ + ٤؟","اختر العدد الأكبر: ٨ أم ٥؟","إذا كان مع أحمد ٥ أقلام وأعطى صديقه ٢، كم بقي معه؟","أكمل النمط: ٢، ٤، ٦، __","ما ناتج ١٠ - ٣؟","أي عدد أصغر: ٦ أم ٩؟","ما ناتج ٢ × ٣؟","إذا كان لديك ٤ تفاحات وأضفت ٣، كم يصبح المجموع؟","أكمل: ٥، ١٠، ١٥، __","كم ضلعًا للمثلث؟"] },
+  { id:"t4", name:"قالب معرفة عامة", categories:["معرفة عامة"], level:"سهل", questions:["كم يومًا في الأسبوع؟","ما لون السماء في النهار؟","ما الحيوان الذي يلقب بملك الغابة؟","ما الشيء الذي نستخدمه للكتابة؟","كم شهرًا في السنة؟","ما الكوكب الذي نعيش عليه؟","ما الحيوان الذي يعطينا الحليب؟","ما وسيلة النقل التي تطير في السماء؟","ما العضو الذي نستخدمه للرؤية؟","ماذا نستخدم لقياس الوقت؟"] },
+  { id:"t5", name:"قالب مفردات", categories:["مفردات"], level:"متوسط", questions:["ما ضد كلمة \"كبير\"؟","ما مرادف كلمة \"سعيد\"؟","ما معنى كلمة \"أمانة\"؟","اختر ضد كلمة \"سريع\".","اختر مرادف كلمة \"جميل\".","ما ضد كلمة \"قريب\"؟","اختر الكلمة التي تدل على النظافة.","ما مرادف كلمة \"منزل\"؟","ما ضد كلمة \"ليل\"؟","اختر الكلمة المناسبة: طالب ____ الدرس."] },
+  { id:"t6", name:"قالب قراءة وفهم", categories:["قراءة وفهم"], level:"متوسط", questions:["اقرأ: \"ذهب سالم إلى المدرسة صباحًا.\" أين ذهب سالم؟","اقرأ: \"شربت مريم الحليب.\" ماذا شربت مريم؟","اقرأ: \"جلس الطفل تحت الشجرة.\" أين جلس الطفل؟","اقرأ: \"اشترى خالد كتابًا جديدًا.\" ماذا اشترى خالد؟","اقرأ: \"ساعدت فاطمة أمها في البيت.\" من ساعدت فاطمة؟","اقرأ: \"طار العصفور فوق الشجرة.\" أين طار العصفور؟","اقرأ: \"زرع علي وردة في الحديقة.\" ماذا زرع علي؟","اقرأ: \"قرأ الطالب القصة بهدوء.\" ماذا قرأ الطالب؟","اقرأ: \"لعب الأطفال في الحديقة.\" أين لعب الأطفال؟","اقرأ: \"أكلت القطة السمكة.\" ماذا أكلت القطة؟"] },
+  { id:"t7", name:"قالب مراجعة شاملة", categories:["إسلاميات","لغة عربية","رياضيات","معرفة عامة"], level:"متوسط", questions:["ما أول أركان الإسلام؟","اختر كلمة تبدأ بحرف الألف.","ما ناتج ٣ + ٤؟","كم يومًا في الأسبوع؟","ما الحرف الأول في كلمة: باب؟","ما ناتج ١٠ - ٣؟","ما الشهر الذي يصوم فيه المسلمون؟","ما لون السماء في النهار؟","أكمل النمط: ٢، ٤، ٦، __","ما القبلة التي يتجه إليها المسلم في الصلاة؟"] },
+];
 
 // ── Color presets ─────────────────────────────────────────────
 const COLOR_PRESETS = [
@@ -157,11 +274,27 @@ export default function HostView() {
   const [editingCell, setEditingCell] = useState<BoardCell | null>(null);
   const [confirmMsg, setConfirmMsg] = useState("");
   const [confirmAction, setConfirmAction] = useState<(()=>void)|null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<StarterTemplate | null>(null);
+  const [communityTemplates, setCommunityTemplates] = useState<StarterTemplate[]>([]);
+  const [templateName, setTemplateName] = useState("");
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateCategory, setTemplateCategory] = useState("");
+  const [templateLevel, setTemplateLevel] = useState("");
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
 
   useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COMMUNITY_TEMPLATES_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setCommunityTemplates(parsed);
+    } catch {
+      showToast.warning("تعذر قراءة قوالب المجتمع المحفوظة.");
+    }
+  }, []);
 
   // Load last room
   useEffect(() => {
@@ -202,12 +335,12 @@ export default function HostView() {
   const push = useCallback(async (updates: Partial<RoomState>) => {
     if (!roomCode) return;
     try { await updateRoom(roomCode, updates); }
-    catch (e) { console.error(e); showToast.error("فشل الاتصال بـ Firebase"); }
+    catch (e) { console.error(e); showToast.error("فشل الاتصال بالخدمة"); }
   }, [roomCode]);
 
   // Create room
   const handleCreate = async () => {
-    if (!isFirebaseConfigured()) { showToast.error("Firebase غير مُهيَّأ — أضف إعدادات Firebase في ملف .env"); return; }
+    if (!isFirebaseConfigured()) { showToast.error("تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا. تحقق من إعدادات المشروع"); return; }
     setCreating(true);
     try {
       const code = await generateUniqueCode();
@@ -224,16 +357,21 @@ export default function HostView() {
   // Cell click
   const handleCellClick = (cell: BoardCell) => {
     if (!room) return;
+    const getCellBank = (c: BoardCell) => Array.isArray((c as any).questionBank) && (c as any).questionBank.length
+      ? (c as any).questionBank
+      : (c.question ? [{ question: c.question, answer: c.answer, category: c.category, difficulty: c.difficulty, points: c.points, hint: c.hint, explanation: c.explanation }] : []);
     if (room.gameStatus === "lobby" || activeTab === "setup") {
       setEditingCell(cell);
     } else {
-      if (!cell.question.trim()) { showToast.warning("لا يوجد سؤال محفوظ لهذا الحرف بعد."); return; }
+      const bank = getCellBank(cell);
+      if (!bank.length) { showToast.warning("لا يوجد سؤال مرتبط بهذا الحرف حالياً."); return; }
       if (cell.claimedBy !== 0) { showToast.info("هذا الحرف محجوز بالفعل."); return; }
+      const first = bank[0];
       const aq: ActiveQuestion = {
         cellId: cell.id, cellLabel: cell.label,
-        question: cell.question, answer: cell.answer,
-        category: cell.category, difficulty: cell.difficulty,
-        points: cell.points, hint: cell.hint, explanation: cell.explanation,
+        question: first.question, answer: first.answer,
+        category: first.category, difficulty: first.difficulty,
+        points: first.points, hint: first.hint, explanation: first.explanation,
       };
       push({
         activeQuestion: aq, selectedCellId: cell.id,
@@ -255,6 +393,9 @@ export default function HostView() {
   // Claim cell
   const claimCell = async (cellId: string) => {
     if (!room) return;
+    if (!room.activeQuestion) return;
+    const current = room.board.find(c => c.id === cellId);
+    if (!current || current.claimedBy !== 0 || current.used) return;
     const nb = room.board.map(c => c.id===cellId ? {...c, claimedBy: room.activeTeam as 0|1|2, used:true} : c);
     const pts = room.activeQuestion?.points || 1;
     const scoreUp = room.activeTeam===1 ? { team1Score: room.team1Score+pts } : { team2Score: room.team2Score+pts };
@@ -266,7 +407,12 @@ export default function HostView() {
     if (winMsg) showToast.success(winMsg);
   };
 
-  const markCorrect = () => { if (room?.activeQuestion) claimCell(room.activeQuestion.cellId); };
+  const [actionLock, setActionLock] = useState(false);
+  const markCorrect = async () => {
+    if (!room?.activeQuestion || actionLock) return;
+    setActionLock(true);
+    try { await claimCell(room.activeQuestion.cellId); } finally { setActionLock(false); }
+  };
   const markWrong = async () => {
     if (!room) return;
     await push({ questionStatus:"wrong" });
@@ -280,14 +426,39 @@ export default function HostView() {
   };
   const nextQuestion = async () => {
     if (!room) return;
-    await push({ activeQuestion:null, selectedCellId:"", answerVisibleToHost:false,
-      answerVisibleToParticipants:false, hintVisibleToParticipants:false,
-      questionStatus:"idle", timerRunning:false });
+    const cell = room.board.find(c=>c.id===room.activeQuestion?.cellId);
+    const bank = cell ? (Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank : (cell.question ? [{ question:cell.question, answer:cell.answer, category:cell.category, difficulty:cell.difficulty, points:cell.points, hint:cell.hint, explanation:cell.explanation }] : [])) : [];
+    if (room.activeQuestion && bank.length > 1) {
+      const idx = Math.max(0, bank.findIndex((q:any)=>q.question===room.activeQuestion?.question && q.answer===room.activeQuestion?.answer));
+      const next = bank[idx+1];
+      if (next) {
+        await push({
+          activeQuestion: { ...room.activeQuestion, question: next.question, answer: next.answer, category: next.category, difficulty: next.difficulty, points: next.points || 1, hint: next.hint || "", explanation: next.explanation || "" },
+          answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
+          questionStatus:"active", timerRunning:false, timerValue: room.timerSetting,
+        });
+        return;
+      }
+    }
+    await push({ activeQuestion:null, selectedCellId:"", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false, questionStatus:"idle", timerRunning:false });
   };
   const skipQ = async () => {
     if (!room) return;
-    await push({ activeQuestion:null, selectedCellId:"", questionStatus:"skipped",
-      answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
+    const cell = room.board.find(c=>c.id===room.activeQuestion?.cellId);
+    const bank = cell ? (Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank : (cell.question ? [{ question:cell.question, answer:cell.answer, category:cell.category, difficulty:cell.difficulty, points:cell.points, hint:cell.hint, explanation:cell.explanation }] : [])) : [];
+    if (room.activeQuestion && bank.length > 1) {
+      const idx = Math.max(0, bank.findIndex((q:any)=>q.question===room.activeQuestion?.question && q.answer===room.activeQuestion?.answer));
+      const next = bank[idx+1];
+      if (next) {
+        await push({
+          activeQuestion: { ...room.activeQuestion, question: next.question, answer: next.answer, category: next.category, difficulty: next.difficulty, points: next.points || 1, hint: next.hint || "", explanation: next.explanation || "" },
+          answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
+          questionStatus:"skipped", timerRunning:false, timerValue: room.timerSetting,
+        });
+        return;
+      }
+    }
+    await push({ activeQuestion:null, selectedCellId:"", questionStatus:"idle", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false, timerRunning:false, timerValue: room.timerSetting });
   };
 
   const startTimer = () => push({ timerRunning:true });
@@ -306,7 +477,11 @@ export default function HostView() {
 
   const startGame = async () => {
     if (!room) return;
-    const empty = room.board.filter(c=>!c.question.trim()).length;
+    const empty = room.board.filter(c=>!(Array.isArray((c as any).questionBank) && (c as any).questionBank.length) && !c.question.trim()).length;
+    if (empty === room.board.length) {
+      showToast.warning("لا توجد أسئلة بعد. أضف أسئلة من صفحة الإنشاء.");
+      return;
+    }
     if (empty>0) {
       confirm(`بعض الحروف لا تحتوي على أسئلة (${empty} حرف). هل تريد المتابعة؟`,
         async () => { await push({ gameStatus:"active" }); setActiveTab("game"); });
@@ -382,6 +557,215 @@ export default function HostView() {
     input.click();
   };
 
+  const duplicateTemplate = (tpl: StarterTemplate) => {
+    try {
+      const copy: StarterTemplate = {
+        ...tpl,
+        id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: `نسخة من ${tpl.name}`,
+        userCreated: true,
+        createdAt: new Date().toISOString(),
+      };
+      const next = [copy, ...communityTemplates].slice(0, 50);
+      setCommunityTemplates(next);
+      localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
+      showToast.success("تم نسخ القالب بنجاح.");
+    } catch {
+      showToast.error("تعذر نسخ القالب. يرجى المحاولة مرة أخرى.");
+    }
+  };
+
+  const useTemplate = async (tpl: StarterTemplate) => {
+    if (!room) return;
+    const ok = window.confirm("سيتم استبدال مجموعة الأسئلة الحالية بهذا القالب. هل تريد المتابعة؟");
+    if (!ok) return;
+    try {
+      let skipped = 0;
+      let missingLetters = 0;
+      const nextBoard = room.board.map((cell) => {
+        const found = tpl.boardBanks?.find(b=>b.cellId===cell.id || b.label===cell.label);
+        const sourceBank = Array.isArray(found?.questionBank) ? found!.questionBank : [];
+        const filtered = sourceBank.filter((q:any) => {
+          const target = normalizeArabicLetter(cell.label);
+          const letterFromData = questionInitialLetter(q);
+          if (!letterFromData) return false;
+          const ok = letterFromData === target;
+          if (!ok) skipped += 1;
+          return ok;
+        }).map((q:any)=>({
+          question: String(q.question || "").trim(),
+          answer: String(q.answer || "").trim(),
+          category: String(q.category || tpl.categories[0] || "غير مصنف"),
+          difficulty: (q.difficulty === "easy" || q.difficulty === "medium" || q.difficulty === "hard") ? q.difficulty : (tpl.level === "سهل" ? "easy" : tpl.level === "صعب" ? "hard" : "medium"),
+          points: Number(q.points) || 1,
+          hint: String(q.hint || ""),
+          explanation: String(q.explanation || ""),
+          letter: String(q.letter || cell.label),
+        }));
+        const bank = filtered.length ? filtered : [];
+        // توافق خلفي للقوالب القديمة (سؤال واحد لكل خانة)
+        if (!bank.length && !tpl.boardBanks?.length && Array.isArray(tpl.questions) && tpl.questions.length) {
+          const legacy = tpl.questions.find((q) => normalizeArabicLetter(q) === normalizeArabicLetter(cell.label));
+          if (legacy) {
+            bank.push({
+              question: legacy,
+              answer: legacy,
+              category: tpl.categories[0] || "غير مصنف",
+              difficulty: (tpl.level === "سهل" ? "easy" : tpl.level === "صعب" ? "hard" : "medium"),
+              points: 1,
+              hint: "",
+              explanation: "",
+              letter: cell.label,
+            } as any);
+          }
+        }
+        if (!bank.length) missingLetters += 1;
+        const first = bank[0];
+        return {
+          ...cell,
+          question: first?.question || "",
+          answer: first?.answer || "",
+          category: first?.category || "",
+          difficulty: (first?.difficulty || "medium") as BoardCell["difficulty"],
+          hint: first?.hint || "",
+          explanation: first?.explanation || "",
+          ...( { questionBank: bank } as any),
+        };
+      });
+      await push({ board: nextBoard });
+      if (skipped > 0) showToast.warning("تم تجاهل بعض الأسئلة لأنها لا تطابق الحروف المحددة.");
+      showToast.success("تم تحميل القالب وتوزيع الأسئلة على جميع الحروف.");
+      if (missingLetters > 0) showToast.info("تم تحميل القالب، لكن بعض الحروف لا تحتوي على أسئلة.");
+    } catch {
+      showToast.error("تعذر تحميل القالب. يرجى المحاولة مرة أخرى.");
+    }
+  };
+  const saveCurrentAsTemplate = () => {
+    if (!room) return;
+    if (!templateName.trim()) { showToast.warning("يرجى إدخال اسم القالب."); return; }
+    const withQ = room.board.filter(c=>c.question.trim() || (Array.isArray((c as any).questionBank) && (c as any).questionBank.length));
+    if (!withQ.length) { showToast.warning("أضف سؤالًا واحدًا على الأقل قبل حفظ القالب."); return; }
+    const boardBanks = room.board.map(c=>{
+      const bank = Array.isArray((c as any).questionBank) && (c as any).questionBank.length ? (c as any).questionBank : (c.question ? [{ question:c.question, answer:c.answer, category:c.category||"غير مصنف", difficulty:c.difficulty, points:c.points||1, hint:c.hint||"", explanation:c.explanation||"", letter:c.label }] : []);
+      return { cellId:c.id, label:c.label, questionBank: bank };
+    });
+    const totalQuestions = boardBanks.reduce((n,b)=>n+b.questionBank.length,0);
+    const cats = Array.from(new Set(boardBanks.flatMap(b=>b.questionBank.map((q:any)=>q.category||"غير مصنف"))));
+    const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:templateName.trim(), categories:cats as string[], level:"متوسط", questions:boardBanks.flatMap(b=>b.questionBank.map((q:any)=>q.question)), boardBanks, createdAt:new Date().toISOString(), userCreated:true };
+    const next=[tpl, ...communityTemplates];
+    setCommunityTemplates(next);
+    localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
+    setTemplateName("");
+    showToast.success("تم حفظ القالب بنجاح.");
+    if (!totalQuestions) return;
+  };
+  const deleteTemplate = (tpl: StarterTemplate) => {
+    if (!tpl.userCreated) { showToast.info("لا يمكن حذف القوالب الجاهزة."); return; }
+    if (!window.confirm("هل تريد حذف هذا القالب؟")) return;
+    const next = communityTemplates.filter(t=>t.id!==tpl.id);
+    setCommunityTemplates(next);
+    localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
+    showToast.success("تم حذف القالب.");
+  };
+  const exportTemplate = (tpl: StarterTemplate) => {
+    const blob = new Blob([JSON.stringify(tpl, null, 2)], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download=`template-${tpl.name}.json`; a.click(); URL.revokeObjectURL(url);
+  };
+  const exportTemplateCsv = (tpl: StarterTemplate) => {
+    const rows: string[] = [];
+    rows.push(["اسم القالب","رقم السؤال","الحرف","السؤال","الإجابة الصحيحة","التصنيف","المستوى"].join(","));
+    (tpl.boardBanks || []).forEach((b) => {
+      (b.questionBank || []).forEach((q:any, idx:number) => {
+        const level = q.difficulty === "easy" ? "سهل" : q.difficulty === "hard" ? "صعب" : "متوسط";
+        const esc = (v:string) => `"${String(v || "").replace(/"/g,'""')}"`;
+        rows.push([esc(tpl.name), String(idx + 1), esc(b.label), esc(q.question), esc(q.answer), esc(q.category || "غير مصنف"), esc(level)].join(","));
+      });
+    });
+    const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `template-${tpl.name}.csv`; a.click(); URL.revokeObjectURL(url);
+  };
+  const importTemplateCsv = () => {
+    const input = document.createElement("input"); input.type = "file"; input.accept = ".csv,text/csv";
+    input.onchange = async e => {
+      try {
+        if (!room) return;
+        const ok = window.confirm("سيتم استبدال مجموعة الأسئلة الحالية بالملف المستورد. هل تريد المتابعة؟");
+        if (!ok) return;
+        const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
+        const text = (await file.text()).replace(/^\uFEFF/, "");
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        if (lines.length < 2) throw new Error();
+        const parse = (line:string) => (line.match(/("([^"]|"")*"|[^,]+)/g) || []).map(x => x.replace(/^"|"$/g, "").replace(/""/g, "\"").trim());
+        const banks = new Map<string, any[]>();
+        let skipped = 0;
+        lines.slice(1).forEach((line) => {
+          const cols = parse(line);
+          const letter = cols[2] || "";
+          const question = cols[3] || "";
+          const answer = cols[4] || "";
+          if (!letter || !question || !answer) { skipped += 1; return; }
+          const normLetter = normalizeArabicLetter(letter);
+          const normAnswer = normalizeArabicLetter(answer);
+          if (normLetter !== normAnswer) skipped += 1;
+          if (!banks.has(letter)) banks.set(letter, []);
+          banks.get(letter)!.push({
+            letter,
+            question,
+            answer,
+            category: cols[5] || "غير مصنف",
+            difficulty: cols[6] === "سهل" ? "easy" : cols[6] === "صعب" ? "hard" : "medium",
+            points: 1,
+            hint: "",
+            explanation: "",
+          });
+        });
+        if (!banks.size) throw new Error();
+        const nextBoard = room.board.map((cell) => {
+          const bank = banks.get(cell.label) || [];
+          const first = bank[0];
+          return { ...cell, question: first?.question || "", answer: first?.answer || "", category: first?.category || "", difficulty: (first?.difficulty || "medium") as BoardCell["difficulty"], ...( { questionBank: bank } as any) };
+        });
+        await push({ board: nextBoard });
+        if (skipped > 0) showToast.warning("تم تجاهل بعض الصفوف بسبب عدم تطابق الحرف مع الإجابة.");
+        showToast.success("تم استيراد الجدول بنجاح.");
+      } catch {
+        showToast.error("تعذر استيراد الجدول. تأكد من تنسيق الملف.");
+      }
+    };
+    input.click();
+  };
+  const importTemplate = () => {
+    const input = document.createElement("input"); input.type="file"; input.accept=".json";
+    input.onchange = async e => {
+      try {
+        const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
+        const parsed = JSON.parse(await file.text());
+        if (!parsed || typeof parsed.name!=="string") throw new Error();
+        const safeBanks = Array.isArray(parsed.boardBanks) ? parsed.boardBanks.map((b:any)=>({
+          cellId: String(b?.cellId || ""),
+          label: String(b?.label || ""),
+          questionBank: Array.isArray(b?.questionBank) ? b.questionBank.filter((q:any)=>q?.question).map((q:any)=>({
+            question: String(q.question || "").trim(),
+            answer: String(q.answer || "").trim(),
+            category: String(q.category || "غير مصنف"),
+            difficulty: (q.difficulty==="easy"||q.difficulty==="medium"||q.difficulty==="hard") ? q.difficulty : "medium",
+            points: Number(q.points) || 1,
+            hint: String(q.hint || ""),
+            explanation: String(q.explanation || ""),
+            letter: String(q.letter || b?.label || ""),
+          })) : [],
+        })) : [];
+        const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:parsed.name, categories:Array.isArray(parsed.categories)?parsed.categories:["غير مصنف"], level:parsed.level==="سهل"||parsed.level==="متوسط"||parsed.level==="صعب"?parsed.level:"متوسط", questions:Array.isArray(parsed.questions)?parsed.questions:[], boardBanks:safeBanks, createdAt:new Date().toISOString(), userCreated:true };
+        const next=[tpl, ...communityTemplates];
+        setCommunityTemplates(next); localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
+        showToast.success("تم استيراد القالب بنجاح.");
+      } catch { showToast.error("تعذر استيراد القالب. تأكد من أن الملف صحيح."); }
+    };
+    input.click();
+  };
+
   // ── Firebase not configured ──
   if (!isFirebaseConfigured()) {
     return (
@@ -389,14 +773,14 @@ export default function HostView() {
         <div style={{ maxWidth:480, textAlign:"center" }}>
           <div style={{ fontSize:"3rem", marginBottom:"1rem" }}>🔥</div>
           <div style={{ fontSize:"1.5rem", fontWeight:800, color:"#f59e0b", marginBottom:"0.75rem" }}>وصلة المعرفة</div>
-          <div style={{ fontSize:"1rem", fontWeight:600, color:"#ef4444", marginBottom:"1rem" }}>Firebase غير مُهيَّأ</div>
+          <div style={{ fontSize:"1rem", fontWeight:600, color:"#ef4444", marginBottom:"1rem" }}>تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا.</div>
           <div style={{ background:"#0f1623", border:"1.5px solid #1a2332", borderRadius:"16px", padding:"1.5rem", textAlign:"right" }}>
-            <div className="section-title">خطوات الإعداد</div>
+            <div className="section-title">إرشادات سريعة</div>
             <ol style={{ color:"#94a3b8", fontSize:"0.85rem", lineHeight:2, paddingRight:"1.25rem" }}>
-              <li>أنشئ مشروع Firebase على <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" style={{ color:"#f59e0b" }}>console.firebase.google.com</a></li>
-              <li>فعّل Realtime Database</li>
-              <li>أنشئ ملف <code style={{ color:"#f59e0b" }}>.env</code> وأضف متغيرات Firebase</li>
-              <li>أعد تشغيل الخادم</li>
+              <li>تحقق من تفعيل الخدمة من خلال لوحة الإعدادات</li>
+              <li>تأكد من جاهزية الخدمة للعب المباشر</li>
+              <li>راجع <code style={{ color:"#f59e0b" }}>إعدادات المشروع</code> وتأكد من اكتمالها</li>
+              <li>أعد المحاولة بعد التأكد من الإعدادات</li>
             </ol>
           </div>
         </div>
@@ -412,8 +796,8 @@ export default function HostView() {
         <div style={{ color:"#475569", marginBottom:"3rem", fontSize:"0.9rem" }}>تحدي الفرق التفاعلي للفصل الدراسي</div>
         <div style={{ background:"#0f1623", border:"1.5px solid #1a2332", borderRadius:"20px", padding:"2.5rem", maxWidth:380, width:"100%", textAlign:"center" }}>
           <div style={{ fontSize:"2.5rem", marginBottom:"1rem" }}>🎮</div>
-          <div style={{ fontWeight:700, fontSize:"1.1rem", color:"#f0ede8", marginBottom:"0.5rem" }}>لوحة التحكم للمضيف</div>
-          <div style={{ color:"#64748b", fontSize:"0.85rem", marginBottom:"2rem" }}>أنشئ غرفة جديدة لبدء اللعبة</div>
+          <div style={{ fontWeight:700, fontSize:"1.1rem", color:"#f0ede8", marginBottom:"0.5rem" }}>لوحة تحكم المضيف</div>
+          <div style={{ color:"#64748b", fontSize:"0.85rem", marginBottom:"2rem" }}>ابدأ تحديًا جديدًا ثم شارك رمز الانضمام مع الفرق</div>
           <button className="btn-gold" style={{ width:"100%", padding:"0.85rem", fontSize:"1rem" }}
             onClick={handleCreate} disabled={creating}>
             {creating ? "جارٍ الإنشاء..." : "إنشاء غرفة جديدة 🚀"}
@@ -440,6 +824,28 @@ export default function HostView() {
           onNo={() => { setConfirmMsg(""); setConfirmAction(null); }} />
       )}
       {editingCell && <CellEditor cell={editingCell} onSave={saveCellQ} onClose={()=>setEditingCell(null)} />}
+      {previewTemplate && (
+        <div className="modal-overlay" onClick={()=>setPreviewTemplate(null)}>
+          <div className="modal-box" style={{ maxWidth: 560 }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontWeight:800, color:"#f59e0b", marginBottom:"0.45rem" }}>معاينة</div>
+            <div style={{ fontWeight:700, color:"#f0ede8", marginBottom:"0.35rem" }}>{previewTemplate.name}</div>
+            <div style={{ fontSize:"0.8rem", color:"#94a3b8", marginBottom:"0.8rem" }}>
+              التصنيف: {previewTemplate.categories.join("، ")} • المستوى: {previewTemplate.level} • عدد الأسئلة الإجمالي: {previewTemplate.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || previewTemplate.questions.length} • عدد الحروف: {previewTemplate.boardBanks?.filter(b=>b.questionBank?.length).length || 0}
+            </div>
+            {previewTemplate.boardBanks && previewTemplate.boardBanks.length > 0 && (
+              <div style={{ fontSize:"0.75rem", color:"#64748b", marginBottom:"0.55rem" }}>
+                {previewTemplate.boardBanks.filter(b=>b.questionBank?.length).slice(0,6).map(b=>`${b.label}: ${b.questionBank.length}`).join(" • ")}
+              </div>
+            )}
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.35rem", marginBottom:"0.8rem" }}>
+              {(previewTemplate.boardBanks?.flatMap(b=>b.questionBank.map((q:any)=>q.question)) || previewTemplate.questions).slice(0,5).map((q, i)=>(
+                <div key={i} style={{ fontSize:"0.86rem", color:"#f0ede8" }}>• {q}</div>
+              ))}
+            </div>
+            <button className="btn-secondary" onClick={()=>setPreviewTemplate(null)}>إغلاق المعاينة</button>
+          </div>
+        </div>
+      )}
 
       {/* Winner overlay */}
       {room.winnerMessage && (
@@ -474,7 +880,7 @@ export default function HostView() {
                 {room.gameStatus==="lobby" ? "انتظار" : room.gameStatus==="active" ? `جارية • الجولة ${room.roundNumber}` : "منتهية"}
               </span>
               <span style={{ fontSize:"0.7rem", padding:"0.2rem 0.5rem", borderRadius:"6px", background:"#1a2332", color:"#64748b" }}>
-                🏷 لوحة التحكم للمضيف
+                🏷 لوحة تحكم المضيف
               </span>
             </div>
             <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
@@ -552,6 +958,12 @@ export default function HostView() {
               <div className="section-title">قائمة الحروف والأسئلة</div>
               <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
                 {sortedBoard(room.board).map(cell=>(
+                  (() => { const count = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank.length : (cell.question ? 1 : 0);
+                  const firstQ = Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank[0] : null;
+                  const qText = firstQ?.question || cell.question;
+                  const qCategory = firstQ?.category || cell.category;
+                  const qDifficulty = firstQ?.difficulty || cell.difficulty;
+                  return (
                   <div key={cell.id} onClick={()=>setEditingCell(cell)}
                     style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.55rem 0.75rem",
                       borderRadius:"10px", cursor:"pointer", background:"#141e2d", border:"1.5px solid #1a2332",
@@ -563,14 +975,67 @@ export default function HostView() {
                       {cell.label}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      {cell.question
-                        ? <><div style={{ fontSize:"0.85rem", color:"#f0ede8", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cell.question}</div>
-                            <div style={{ fontSize:"0.72rem", color:"#64748b" }}>{cell.category && `${cell.category} • `}{cell.difficulty==="easy"?"سهل":cell.difficulty==="medium"?"متوسط":"صعب"} • {cell.points} نقطة</div></>
+                      {qText
+                        ? <><div style={{ fontSize:"0.85rem", color:"#f0ede8", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{qText}</div>
+                            <div style={{ fontSize:"0.72rem", color:"#64748b" }}>{qCategory && `${qCategory} • `}{qDifficulty==="easy"?"سهل":qDifficulty==="medium"?"متوسط":"صعب"} • عدد الأسئلة: {count}</div></>
                         : <div style={{ fontSize:"0.85rem", color:"#3d5068" }}>هذا الحرف لا يحتوي على سؤال بعد</div>}
                     </div>
-                    <span style={{ fontSize:"0.75rem", color: cell.question ? "#22c55e" : "#ef4444" }}>{cell.question?"✓":"!"}</span>
+                    <span style={{ fontSize:"0.75rem", color: qText ? "#22c55e" : "#ef4444" }}>{qText?"✓":"!"}</span>
                   </div>
+                  ); })()
                 ))}
+              </div>
+            </div>
+
+            <div className="kc-card" style={{ gridColumn:"1 / -1" }}>
+              <div className="section-title">قوالب المجتمع</div>
+              <div style={{ fontSize:"0.82rem", color:"#94a3b8", marginBottom:"0.8rem" }}>
+                احفظ بنك الأسئلة الحالي كقالب، أو استخدم قالبًا جاهزًا/محفوظًا.
+                <div style={{ marginTop:"0.35rem" }}>يمكنك تعديل القالب في Excel ثم استيراده مرة أخرى.</div>
+                <div>يمكنك مشاركة القوالب مع الآخرين عن طريق تصديرها كجدول Excel.</div>
+              </div>
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
+                <input className="kc-input" style={{ maxWidth:240 }} placeholder="اسم القالب" value={templateName} onChange={e=>setTemplateName(e.target.value)} />
+                <button className="btn-gold" onClick={saveCurrentAsTemplate}>حفظ كقالب</button>
+                <button className="btn-secondary" onClick={importTemplate}>استيراد قالب</button>
+                <button className="btn-secondary" onClick={importTemplateCsv}>استيراد من جدول</button>
+              </div>
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
+                <input className="kc-input" style={{ maxWidth:240 }} placeholder="ابحث عن قالب..." value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
+                <select className="kc-input" style={{ maxWidth:180 }} value={templateCategory} onChange={e=>setTemplateCategory(e.target.value)}>
+                  <option value="">التصنيف</option><option value="إسلاميات">إسلاميات</option><option value="لغة عربية">لغة عربية</option><option value="رياضيات">رياضيات</option><option value="معرفة عامة">معرفة عامة</option><option value="مفردات">مفردات</option><option value="قراءة وفهم">قراءة وفهم</option><option value="تقنية">تقنية</option><option value="حياة يومية">حياة يومية</option><option value="غير مصنف">غير مصنف</option>
+                </select>
+                <select className="kc-input" style={{ maxWidth:160 }} value={templateLevel} onChange={e=>setTemplateLevel(e.target.value)}>
+                  <option value="">المستوى</option><option value="سهل">سهل</option><option value="متوسط">متوسط</option><option value="صعب">صعب</option>
+                </select>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
+                {[...STARTER_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).map(tpl => {
+                  const totalQ = tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length;
+                  const covered = tpl.boardBanks?.filter(b=>b.questionBank?.length).length || 0;
+                  const avg = covered ? (totalQ / covered).toFixed(1) : "0";
+                  return (
+                  <div key={tpl.id} style={{ background:"#141e2d", border:"1.5px solid #1a2332", borderRadius:"14px", padding:"0.85rem" }}>
+                    <div style={{ fontWeight:800, color:"#f0ede8", marginBottom:"0.35rem" }}>{tpl.name}</div>
+                    <div style={{ fontSize:"0.74rem", color:"#94a3b8", lineHeight:1.8 }}>
+                      <div>التصنيف: {tpl.categories.join("، ")}</div>
+                      <div>المستوى: {tpl.level}</div>
+                      <div>الحروف المغطاة: {covered}</div>
+                      <div>إجمالي الأسئلة: {totalQ}</div>
+                      <div>المتوسط: {avg} أسئلة لكل حرف</div>
+                      {covered < ARABIC_LETTERS_FULL.length && <div style={{ color:"#f59e0b" }}>هذا القالب لا يغطي جميع الحروف.</div>}
+                      {tpl.createdAt && <div>تاريخ الحفظ: {new Date(tpl.createdAt).toLocaleDateString("ar")}</div>}
+                    </div>
+                    <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
+                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button>
+                      <button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={()=>useTemplate(tpl)}>استخدام القالب</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>duplicateTemplate(tpl)}>نسخ القالب</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplate(tpl)}>تصدير القالب</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplateCsv(tpl)}>تصدير كجدول</button>
+                      {tpl.userCreated && <button className="btn-danger" style={{ fontSize:"0.75rem" }} onClick={()=>deleteTemplate(tpl)}>حذف القالب</button>}
+                    </div>
+                  </div>
+                );})}
               </div>
             </div>
           </div>
@@ -629,7 +1094,7 @@ export default function HostView() {
                   </div>
                 </div>
                 <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem", flexWrap:"wrap" }}>
-                  {[15,30,45,60].map(s=>(
+                  {[15,30,45,60,90,120].map(s=>(
                     <button key={s} className="btn-secondary" style={{ fontSize:"0.72rem", padding:"0.2rem 0.55rem" }}
                       onClick={()=>push({ timerSetting:s, timerValue:s, timerRunning:false })}>{s}ث</button>
                   ))}
@@ -723,7 +1188,7 @@ export default function HostView() {
                 selectedCellId={room.selectedCellId} team1={room.team1} team2={room.team2}
                 onCellClick={handleCellClick} winnerTeam={room.winnerTeam} />
               {room.activeQuestion && room.questionStatus!=="correct" && (
-                <button className="btn-gold" style={{ width:"100%", marginTop:"1rem", fontSize:"0.9rem" }} onClick={markCorrect}>
+                <button className="btn-gold" style={{ width:"100%", marginTop:"1rem", fontSize:"0.9rem" }} onClick={markCorrect} disabled={actionLock}>
                   🎯 منح الحرف "{room.activeQuestion.cellLabel}" للفريق النشط
                 </button>
               )}
@@ -783,11 +1248,32 @@ function SettingsTab({ room, push, roomCode }: { room: RoomState; push: (u: Part
 function TeamsSettings({ room, push }: { room: RoomState; push: (u: Partial<RoomState>)=>Promise<void> }) {
   const [t1, setT1] = useState({ ...room.team1 });
   const [t2, setT2] = useState({ ...room.team2 });
+  const members = ((room as any).teamMembers || { "1": [], "2": [] }) as Record<string, Array<{ id:string; name:string; status:"present"|"absent"|"pending"; star?:boolean }>>;
+  const [newMember, setNewMember] = useState<{1:string;2:string}>({1:"",2:""});
   useEffect(()=>{ setT1({...room.team1}); setT2({...room.team2}); }, [room.team1, room.team2]);
+  const updateMembers = async (teamId: 1|2, updater: (arr: any[]) => any[]) => {
+    const next = { ...(room as any).teamMembers || { "1": [], "2": [] } };
+    next[String(teamId)] = updater([...(next[String(teamId)] || [])]);
+    await push({ ...( { teamMembers: next } as any) });
+  };
+  const addMember = async (teamId: 1|2) => {
+    const name = newMember[teamId].trim();
+    if (!name) return;
+    await updateMembers(teamId, (arr) => [...arr, { id: `m_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, name, status: "pending", star: false }]);
+    setNewMember(prev => ({ ...prev, [teamId]: "" }));
+  };
+  const setMemberStatus = async (teamId: 1|2, memberId: string, status: "present"|"absent"|"pending") => {
+    await updateMembers(teamId, (arr) => arr.map((m) => m.id === memberId ? { ...m, status } : m));
+  };
+  const setStar = async (teamId: 1|2, memberId: string) => {
+    await updateMembers(teamId, (arr) => arr.map((m) => ({ ...m, star: m.id === memberId ? !m.star : false })));
+    showToast.success("تم اختيار نجم الفريق");
+  };
+  const removeMember = async (teamId: 1|2, memberId: string) => updateMembers(teamId, (arr) => arr.filter((m) => m.id !== memberId));
   return (
     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.25rem" }}>
       {[{ label:"الفريق الأول", t:t1, setT:setT1, key:"team1" as const },
-        { label:"الفريق الثاني", t:t2, setT:setT2, key:"team2" as const }].map(({ label, t, setT, key })=>(
+        { label:"الفريق الثاني", t:t2, setT:setT2, key:"team2" as const }].map(({ label, t, setT, key }, idx)=>(
         <div key={key} className="kc-card">
           <div className="section-title">{label}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
@@ -795,6 +1281,32 @@ function TeamsSettings({ room, push }: { room: RoomState; push: (u: Partial<Room
             <div><label style={lbl2}>الأحرف الأولى</label><input value={t.initials} onChange={e=>setT({...t,initials:e.target.value})} maxLength={3} className="kc-input" /></div>
             <div><label style={lbl2}>لون الفريق</label><ColorPicker value={t.color} onChange={c=>setT({...t,color:c})} /></div>
             <button className="btn-gold" onClick={()=>push({ [key]:t })}>حفظ الفريق</button>
+            <div style={{ marginTop:"0.5rem", borderTop:"1px solid #1a2332", paddingTop:"0.75rem" }}>
+              <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:"0.35rem" }}>أعضاء الفريق</div>
+              <div style={{ fontSize:"0.75rem", color:"#94a3b8", marginBottom:"0.45rem" }}>
+                الحضور: {(members[String(idx+1)] || []).filter(m=>m.status==="present").length} / {(members[String(idx+1)] || []).length}
+              </div>
+              <div style={{ display:"flex", gap:"0.35rem", marginBottom:"0.45rem" }}>
+                <input className="kc-input" placeholder="اسم العضو" value={newMember[(idx+1) as 1|2]} onChange={e=>setNewMember(prev=>({ ...prev, [idx+1]: e.target.value }))} />
+                <button className="btn-secondary" onClick={()=>addMember((idx+1) as 1|2)}>إضافة عضو</button>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
+                {(members[String(idx+1)] || []).map((m)=>(
+                  <div key={m.id} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"8px", padding:"0.45rem" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", gap:"0.35rem", alignItems:"center" }}>
+                      <div style={{ fontSize:"0.82rem", color:"#f0ede8", fontWeight:700 }}>{m.name} {m.star ? "⭐" : ""}</div>
+                      <div style={{ fontSize:"0.72rem", color:m.status==="present"?"#22c55e":m.status==="absent"?"#ef4444":"#94a3b8" }}>{m.status==="present"?"حاضر":m.status==="absent"?"غائب":"بانتظار التأكيد"}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:"0.3rem", marginTop:"0.35rem", flexWrap:"wrap" }}>
+                      <button className="btn-secondary" style={{ fontSize:"0.7rem" }} onClick={()=>setMemberStatus((idx+1) as 1|2, m.id, "present")}>تأكيد الحضور</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.7rem" }} onClick={()=>setMemberStatus((idx+1) as 1|2, m.id, "absent")}>غائب</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.7rem" }} onClick={()=>setStar((idx+1) as 1|2, m.id)}>{m.star ? "إلغاء نجم الفريق" : "اختيار نجم الفريق"}</button>
+                      <button className="btn-danger" style={{ fontSize:"0.7rem" }} onClick={()=>removeMember((idx+1) as 1|2, m.id)}>إزالة العضو</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       ))}

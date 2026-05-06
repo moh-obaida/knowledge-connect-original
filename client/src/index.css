@@ -62,13 +62,14 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    background: var(--background);
+    background: radial-gradient(circle at top, #111a2b 0%, var(--background) 45%);
     color: var(--foreground);
     font-family: 'Cairo', sans-serif;
     direction: rtl;
     text-align: right;
     min-height: 100vh;
-    line-height: 1.6;
+    line-height: 1.7;
+    overflow-x: hidden;
   }
   input, textarea, select, button {
     font-family: 'Cairo', sans-serif;
@@ -88,6 +89,7 @@
 @layer components {
   .container {
     width: 100%;
+    max-width: 1400px;
     margin-left: auto;
     margin-right: auto;
     padding-left: 1rem;
@@ -308,4 +310,15 @@
 
   /* ── Timer ring ── */
   @keyframes timer-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+}
+
+
+@media (max-width: 768px) {
+  .btn-gold, .btn-secondary, .btn-danger, .btn-green { min-height: 44px; }
+  .kc-input { min-height: 42px; }
+}
+
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible {
+  outline: 3px solid rgba(245,158,11,0.45);
+  outline-offset: 2px;
 }

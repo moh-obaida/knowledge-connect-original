@@ -22,7 +22,7 @@ export default function HexBoard({
   const safeGrid = ([4, 5, 6].includes(gridSize) ? gridSize : 5) as 4 | 5 | 6;
   const cellSize = compact ? (safeGrid === 4 ? 70 : safeGrid === 5 ? 60 : 52)
                            : (safeGrid === 4 ? 90 : safeGrid === 5 ? 78 : 66);
-  const gap = 5;
+  const gap = 0;
 
   return (
     <div style={{ position: "relative", padding: "8px" }}>
@@ -53,9 +53,9 @@ export default function HexBoard({
           const isSelected = cell.id === selectedCellId;
           const hasQ = !!cell.question.trim();
 
-          let bg = "#1a2332";
-          let border = "1px solid #253347";
-          let textColor = "#475569";
+          let bg = "#f8fafc";
+          let border = "2px solid #6b46c1";
+          let textColor = "#0f172a";
           let shadow = "none";
 
           if (claimed1) {
@@ -65,10 +65,10 @@ export default function HexBoard({
             bg = team2.color; border = `2px solid ${team2.color}`; textColor = "#fff";
             shadow = `0 0 16px ${team2.color}66`;
           } else if (isSelected) {
-            bg = "#1e3a5f"; border = "3px solid #f59e0b"; textColor = "#f59e0b";
+            bg = "#eef2ff"; border = "3px solid #f59e0b"; textColor = "#1e1b4b";
             shadow = "0 0 20px rgba(245,158,11,0.5)";
           } else if (mode === "setup" && hasQ) {
-            bg = "#0f2318"; border = "1px solid #16a34a44"; textColor = "#22c55e";
+            bg = "#dcfce7"; border = "2px solid #22c55e"; textColor = "#166534";
           }
 
           const clickable = !!onCellClick && (
@@ -81,7 +81,7 @@ export default function HexBoard({
               key={cell.id}
               title={
                 mode === "setup"
-                  ? hasQ ? "يحتوي على سؤال — اضغط للتعديل" : "لا يوجد سؤال — اضغط للإضافة"
+                  ? hasQ ? "تم إعداد سؤال — اضغط للتعديل" : "لا يوجد سؤال بعد — اضغط للإضافة"
                   : cell.claimedBy !== 0 ? "تم حجز هذا الحرف" : ""
               }
               onClick={() => clickable && onCellClick!(cell)}
@@ -98,8 +98,8 @@ export default function HexBoard({
                 transition: "all 0.2s ease",
                 boxShadow: shadow,
                 outline: border,
-                outlineOffset: "-2px",
-                marginTop: isOddRow ? cellSize * 0.38 : 0,
+                outlineOffset: "-3px",
+                marginTop: isOddRow ? cellSize * 0.26 : 0,
                 animation: isSelected ? "hexGlow 1.5s ease-in-out infinite" : "none",
                 userSelect: "none",
               }}
