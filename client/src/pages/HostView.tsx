@@ -419,7 +419,7 @@ export default function HostView() {
         id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         name: `نسخة من ${tpl.name}`,
       };
-      const next = [copy, ...communityTemplates];
+      const next = [copy, ...communityTemplates].slice(0, 50);
       setCommunityTemplates(next);
       localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
       showToast.success("تم نسخ القالب بنجاح.");
