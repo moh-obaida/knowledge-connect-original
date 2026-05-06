@@ -72,6 +72,10 @@ function CellEditor({ cell, onSave, onClose }: {
   const save = () => {
     if (!q.trim()) { showToast.error("نص السؤال مطلوب"); return; }
     if (!a.trim()) { showToast.error("الإجابة الصحيحة مطلوبة"); return; }
+    const firstAnswerChar = a.trim().charAt(0);
+    if (firstAnswerChar && firstAnswerChar !== cell.label) {
+      showToast.warning("تنبيه: الإجابة لا تبدأ بالحرف المحدد.");
+    }
     const next = [...questionBank];
     const payload = { question: q.trim(), answer: a.trim(), category: (cat.trim()||"غير مصنف"), difficulty: diff, points: Number(pts)||1, hint: hint.trim(), explanation: expl.trim() } as BankQ;
     if (editingIndex >= 0) next[editingIndex] = payload;
