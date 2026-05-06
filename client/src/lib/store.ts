@@ -180,17 +180,34 @@ export function checkWinner(board: BoardCell[], gridSize: number): 0 | 1 | 2 {
 }
 function bfsWin(board: BoardCell[], size: number, team: 1|2, dir: "horizontal"|"vertical"): boolean {
   const visited = new Set<number>(); const queue: number[] = [];
-  if (dir==="horizontal") { for(let r=0;r<size;r++){const i=r*size;if(board[i]?.claimedBy===team){queue.push(i);visited.add(i);}}}
-  else { for(let c=0;c<size;c++){if(board[c]?.claimedBy===team){queue.push(c);visited.add(c);}}}
+  if (dir==="horizontal") {
+    for (let r = 0; r < size; r++) {
+      const i = r * size;
+      if (board[i]?.claimedBy === team) { queue.push(i); visited.add(i); }
+    }
+  } else {
+    for (let c = 0; c < size; c++) {
+      if (board[c]?.claimedBy === team) { queue.push(c); visited.add(c); }
+    }
+  }
   while(queue.length){
-    const cur=queue.shift()!; const r=Math.floor(cur/size),c=cur%size;
-    if(dir==="horizontal"&&c===size-1)return true;
-    if(dir==="vertical"&&r===size-1)return true;
-    for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]]){
-      const nr=r+dr,nc=c+dc;
-      if(nr<0||nr>=size||nc<0||nc>=size)continue;
-      const ni=nr*size+nc;
-      if(!visited.has(ni)&&board[ni]?.claimedBy===team){visited.add(ni);queue.push(ni);}
+    const cur = queue.shift()!;
+    const r = Math.floor(cur / size), c = cur % size;
+    if (dir === "horizontal" && c === size - 1) return true;
+    if (dir === "vertical" && r === size - 1) return true;
+
+    const deltas = r % 2 === 0
+      ? [[-1, 0], [-1, -1], [0, -1], [0, 1], [1, 0], [1, -1]]
+      : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
+
+    for (const [dr, dc] of deltas) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+      const ni = nr * size + nc;
+      if (!visited.has(ni) && board[ni]?.claimedBy === team) {
+        visited.add(ni);
+        queue.push(ni);
+      }
     }
   }
   return false;
