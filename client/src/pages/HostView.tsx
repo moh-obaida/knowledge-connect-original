@@ -875,7 +875,7 @@ export default function HostView() {
                   </div>
                 </div>
                 <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem", flexWrap:"wrap" }}>
-                  {[15,30,45,60].map(s=>(
+                  {[15,30,45,60,90,120].map(s=>(
                     <button key={s} className="btn-secondary" style={{ fontSize:"0.72rem", padding:"0.2rem 0.55rem" }}
                       onClick={()=>push({ timerSetting:s, timerValue:s, timerRunning:false })}>{s}ث</button>
                   ))}
