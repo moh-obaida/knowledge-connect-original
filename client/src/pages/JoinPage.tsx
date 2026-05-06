@@ -26,7 +26,7 @@ export default function JoinPage() {
     const name = playerName.trim();
     if (!code || code.length !== 6) { showToast.error("أدخل رمز الغرفة المكوّن من 6 أرقام"); return; }
     if (!name) { showToast.error("الرجاء إدخال اسمك."); return; }
-    if (!isFirebaseConfigured()) { showToast.error("Firebase غير مُهيَّأ — راجع README"); return; }
+    if (!isFirebaseConfigured()) { showToast.error("تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا. راجع ملف التعليمات أو تواصل مع المسؤول"); return; }
     setLoading(true);
     try {
       const playerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -54,7 +54,7 @@ export default function JoinPage() {
     }}>
       {/* Page identity badge */}
       <div style={{ fontSize:"0.72rem", padding:"0.25rem 0.75rem", borderRadius:"9999px", background:"#1a2332", color:"#64748b", marginBottom:"1.5rem", fontWeight:600 }}>
-        🏷 صفحة الانضمام
+        🏷 الانضمام إلى التحدي
       </div>
 
       {/* Logo */}
@@ -63,7 +63,7 @@ export default function JoinPage() {
           وصلة المعرفة
         </div>
         <div style={{ fontSize:"0.9rem", color:"#475569", marginTop:"0.4rem" }}>
-          تحدي الفرق التفاعلي للفصل الدراسي
+          أهلًا بك في وصلة المعرفة — انضم بسرعة وابدأ التحدي
         </div>
       </div>
 
@@ -77,7 +77,7 @@ export default function JoinPage() {
         boxShadow: "0 25px 60px rgba(0,0,0,0.6)",
       }}>
         <h2 style={{ fontWeight:800, fontSize:"1.2rem", color:"#f0ede8", textAlign:"center", marginBottom:"1.5rem" }}>
-          انضم إلى الغرفة
+          الانضمام إلى الغرفة
         </h2>
 
         <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
@@ -144,12 +144,12 @@ export default function JoinPage() {
             onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.transform="translateY(-2px)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform="translateY(0)"; }}
           >
-            {loading ? "جارٍ الانضمام..." : "انضم الآن 🎯"}
+            {loading ? "جارٍ الانضمام..." : "الانضمام الآن 🎯"}
           </button>
         </div>
 
         <p style={{ textAlign:"center", fontSize:"0.78rem", color:"#475569", marginTop:"1.25rem" }}>
-          احصل على رمز الغرفة من المضيف
+          اطلب رمز الانضمام من المضيف ثم أدخله هنا
         </p>
       </div>
 
