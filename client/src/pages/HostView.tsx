@@ -167,12 +167,31 @@ type StarterTemplate = {
   createdAt?: string;
   userCreated?: boolean;
 };
+type TemplateQuestionItem = {
+  letter?: string;
+  question: string;
+  answer: string;
+  category?: string;
+  difficulty?: BoardCell["difficulty"];
+  hint?: string;
+  explanation?: string;
+};
 const COMMUNITY_TEMPLATES_KEY = "knowledgeConnectCommunityTemplates";
+const ARABIC_LETTER_NORMALIZE: Record<string, string> = { "أ":"ا", "إ":"ا", "آ":"ا", "ٱ":"ا", "ة":"ه", "ى":"ي" };
+const normalizeArabicLetter = (value?: string) => {
+  const ch = (value || "").trim().charAt(0);
+  return ARABIC_LETTER_NORMALIZE[ch] || ch;
+};
+const questionInitialLetter = (item: Partial<TemplateQuestionItem>) => {
+  if (item.letter) return normalizeArabicLetter(item.letter);
+  if (item.answer) return normalizeArabicLetter(item.answer);
+  return "";
+};
 const STARTER_TEMPLATES: StarterTemplate[] = [
   { id:"teen1", name:"تحدي الثقافة العامة", categories:["ثقافة عامة"], level:"متوسط", questions:["اذكر عاصمة عربية تبدأ بحرف الألف.","اذكر دولة أو مدينة تبدأ بحرف الباء.","اذكر مادة دراسية تبدأ بحرف الجيم.","اذكر وسيلة نقل تبدأ بحرف الطاء.","اذكر شيئًا نقرأه يبدأ بحرف القاف."], boardBanks:[{ cellId:"", label:"أ", questionBank:[{ question:"اذكر عاصمة عربية تبدأ بحرف الألف.", answer:"أبوظبي", category:"ثقافة عامة", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ب", questionBank:[{ question:"اذكر دولة أو مدينة تبدأ بحرف الباء.", answer:"بغداد", category:"ثقافة عامة", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ج", questionBank:[{ question:"اذكر مادة دراسية تبدأ بحرف الجيم.", answer:"جغرافيا", category:"ثقافة عامة", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ط", questionBank:[{ question:"اذكر وسيلة نقل تبدأ بحرف الطاء.", answer:"طائرة", category:"ثقافة عامة", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ق", questionBank:[{ question:"اذكر شيئًا نقرأه يبدأ بحرف القاف.", answer:"قصة", category:"ثقافة عامة", difficulty:"medium", points:1, hint:"", explanation:"" }] }] },
   { id:"teen2", name:"تحدي التقنية والذكاء الاصطناعي", categories:["تقنية"], level:"متوسط", questions:["اذكر كلمة تقنية تبدأ بحرف التاء.","اذكر جهازًا يتصل بالشبكة ويبدأ بحرف الراء.","اذكر مفهومًا تقنيًا يبدأ بحرف السين.","اذكر جزءًا من الحاسوب يبدأ بحرف الكاف.","اذكر منصة رقمية تبدأ بحرف الياء."], boardBanks:[{ cellId:"", label:"ت", questionBank:[{ question:"اذكر كلمة تقنية تبدأ بحرف التاء.", answer:"تطبيق", category:"تقنية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ر", questionBank:[{ question:"اذكر جهازًا يتصل بالشبكة ويبدأ بحرف الراء.", answer:"راوتر", category:"تقنية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"س", questionBank:[{ question:"اذكر مفهومًا تقنيًا يبدأ بحرف السين.", answer:"سيرفر", category:"تقنية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ك", questionBank:[{ question:"اذكر جزءًا من الحاسوب يبدأ بحرف الكاف.", answer:"كاميرا", category:"تقنية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ي", questionBank:[{ question:"اذكر منصة رقمية تبدأ بحرف الياء.", answer:"يوتيوب", category:"تقنية", difficulty:"medium", points:1, hint:"", explanation:"" }] }] },
   { id:"teen3", name:"تحدي القيم والحياة اليومية", categories:["حياة يومية"], level:"سهل", questions:["اذكر قيمة تبدأ بحرف الألف.","اذكر قيمة تبدأ بحرف التاء.","اذكر قيمة تبدأ بحرف الشين.","اذكر قيمة تبدأ بحرف الصاد.","اذكر قيمة تبدأ بحرف الواو."], boardBanks:[{ cellId:"", label:"أ", questionBank:[{ question:"اذكر قيمة تبدأ بحرف الألف.", answer:"أمانة", category:"حياة يومية", difficulty:"easy", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ت", questionBank:[{ question:"اذكر قيمة تبدأ بحرف التاء.", answer:"تعاون", category:"حياة يومية", difficulty:"easy", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ش", questionBank:[{ question:"اذكر قيمة تبدأ بحرف الشين.", answer:"شجاعة", category:"حياة يومية", difficulty:"easy", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ص", questionBank:[{ question:"اذكر قيمة تبدأ بحرف الصاد.", answer:"صدق", category:"حياة يومية", difficulty:"easy", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"و", questionBank:[{ question:"اذكر قيمة تبدأ بحرف الواو.", answer:"وفاء", category:"حياة يومية", difficulty:"easy", points:1, hint:"", explanation:"" }] }] },
-  { id:"teen4", name:"تحدي اللغة العربية للمراهقين", categories:["لغة عربية"], level:"متوسط", questions:["اذكر كلمة تبدأ بحرف الباء وتدل على مصدر معرفي.","اذكر كلمة تبدأ بحرف الراء وتدل على طلب المعرفة.","اذكر كلمة تبدأ بحرف الضاد وترتبط بلغتنا.","اذكر كلمة تبدأ بحرف الميم وتدل على معنى.","اذكر كلمة تبدأ بحرف الياء وتدل على يقين."], boardBanks:[{ cellId:"", label:"ب", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الباء وتدل على مصدر معرفي.", answer:"بحث", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ر", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الراء وتدل على طلب المعرفة.", answer:"قراءة", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ض", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الضاد وترتبط بلغتنا.", answer:"ضاد", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"م", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الميم وتدل على معنى.", answer:"مفهوم", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ي", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الياء وتدل على يقين.", answer:"يقين", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] }] },
+  { id:"teen4", name:"تحدي اللغة العربية للمراهقين", categories:["لغة عربية"], level:"متوسط", questions:["اذكر كلمة تبدأ بحرف الباء وتدل على مصدر معرفي.","اذكر كلمة تبدأ بحرف الراء وتدل على طلب المعرفة.","اذكر كلمة تبدأ بحرف الضاد وترتبط بلغتنا.","اذكر كلمة تبدأ بحرف الميم وتدل على معنى.","اذكر كلمة تبدأ بحرف الياء وتدل على يقين."], boardBanks:[{ cellId:"", label:"ب", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الباء وتدل على مصدر معرفي.", answer:"بحث", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ر", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الراء وتدل على طلب المعرفة.", answer:"رغبة", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ض", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الضاد وترتبط بلغتنا.", answer:"ضاد", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"م", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الميم وتدل على معنى.", answer:"مفهوم", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] },{ cellId:"", label:"ي", questionBank:[{ question:"اذكر كلمة تبدأ بحرف الياء وتدل على يقين.", answer:"يقين", category:"لغة عربية", difficulty:"medium", points:1, hint:"", explanation:"" }] }] },
   { id:"t1", name:"قالب إسلاميات مبسط", categories:["إسلاميات"], level:"سهل", questions:["ما أول أركان الإسلام؟","ما اسم أول سورة في القرآن الكريم؟","ماذا نقول قبل قراءة القرآن؟","من هو خاتم الأنبياء؟","ما اسم الكتاب الذي أنزله الله على سيدنا محمد ﷺ؟","كم عدد الصلوات المفروضة في اليوم؟","ماذا نقول عند بداية الطعام؟","ما القبلة التي يتجه إليها المسلم في الصلاة؟","ما الشهر الذي يصوم فيه المسلمون؟","ما معنى الصدق؟"] },
   { id:"t2", name:"قالب لغة عربية للحروف", categories:["لغة عربية"], level:"سهل", questions:["اختر كلمة تبدأ بحرف الألف.","ما الحرف الأول في كلمة: باب؟","أكمل الكلمة بالحرف المناسب: _سد","اختر الكلمة المختلفة.","ما الحرف الأخير في كلمة: كتاب؟","أي كلمة تبدأ بحرف الميم؟","أكمل الكلمة: قـ_ر","ما الحرف الأول في كلمة: وردة؟","أي كلمة تحتوي على حرف السين؟","اختر كلمة تنتهي بحرف النون."] },
   { id:"t3", name:"قالب رياضيات سريع", categories:["رياضيات"], level:"متوسط", questions:["ما ناتج ٣ + ٤؟","اختر العدد الأكبر: ٨ أم ٥؟","إذا كان مع أحمد ٥ أقلام وأعطى صديقه ٢، كم بقي معه؟","أكمل النمط: ٢، ٤، ٦، __","ما ناتج ١٠ - ٣؟","أي عدد أصغر: ٦ أم ٩؟","ما ناتج ٢ × ٣؟","إذا كان لديك ٤ تفاحات وأضفت ٣، كم يصبح المجموع؟","أكمل: ٥، ١٠، ١٥، __","كم ضلعًا للمثلث؟"] },
@@ -519,12 +538,44 @@ export default function HostView() {
     const ok = window.confirm("سيتم استبدال مجموعة الأسئلة الحالية بهذا القالب. هل تريد المتابعة؟");
     if (!ok) return;
     try {
-      const nextBoard = room.board.map((cell, idx) => {
-        const legacy = tpl.questions[idx % tpl.questions.length] || "";
+      let skipped = 0;
+      const nextBoard = room.board.map((cell) => {
         const found = tpl.boardBanks?.find(b=>b.cellId===cell.id || b.label===cell.label);
-        const bank = Array.isArray(found?.questionBank) && found!.questionBank.length
-          ? found!.questionBank
-          : (legacy ? [{ question: legacy, answer: "", category: tpl.categories[0] || "غير مصنف", difficulty: (tpl.level === "سهل" ? "easy" : tpl.level === "متوسط" ? "medium" : "hard"), points:1, hint:"", explanation:"" }] : []);
+        const sourceBank = Array.isArray(found?.questionBank) ? found!.questionBank : [];
+        const filtered = sourceBank.filter((q:any) => {
+          const target = normalizeArabicLetter(cell.label);
+          const letterFromData = questionInitialLetter(q);
+          if (!letterFromData) return false;
+          const ok = letterFromData === target;
+          if (!ok) skipped += 1;
+          return ok;
+        }).map((q:any)=>({
+          question: String(q.question || "").trim(),
+          answer: String(q.answer || "").trim(),
+          category: String(q.category || tpl.categories[0] || "غير مصنف"),
+          difficulty: (q.difficulty === "easy" || q.difficulty === "medium" || q.difficulty === "hard") ? q.difficulty : (tpl.level === "سهل" ? "easy" : tpl.level === "صعب" ? "hard" : "medium"),
+          points: Number(q.points) || 1,
+          hint: String(q.hint || ""),
+          explanation: String(q.explanation || ""),
+          letter: String(q.letter || cell.label),
+        }));
+        const bank = filtered.length ? filtered : [];
+        // توافق خلفي للقوالب القديمة (سؤال واحد لكل خانة)
+        if (!bank.length && !tpl.boardBanks?.length && Array.isArray(tpl.questions) && tpl.questions.length) {
+          const legacy = tpl.questions.find((q) => normalizeArabicLetter(q) === normalizeArabicLetter(cell.label));
+          if (legacy) {
+            bank.push({
+              question: legacy,
+              answer: legacy,
+              category: tpl.categories[0] || "غير مصنف",
+              difficulty: (tpl.level === "سهل" ? "easy" : tpl.level === "صعب" ? "hard" : "medium"),
+              points: 1,
+              hint: "",
+              explanation: "",
+              letter: cell.label,
+            } as any);
+          }
+        }
         const first = bank[0];
         return {
           ...cell,
@@ -538,7 +589,8 @@ export default function HostView() {
         };
       });
       await push({ board: nextBoard });
-      showToast.success("تم تحميل القالب.");
+      if (skipped > 0) showToast.warning("تم تجاهل بعض الأسئلة لأنها لا تطابق الحروف المحددة.");
+      showToast.success("تم تحميل القالب وتوزيع الأسئلة على الحروف.");
     } catch {
       showToast.error("تعذر تحميل القالب. يرجى المحاولة مرة أخرى.");
     }
@@ -549,7 +601,7 @@ export default function HostView() {
     const withQ = room.board.filter(c=>c.question.trim() || (Array.isArray((c as any).questionBank) && (c as any).questionBank.length));
     if (!withQ.length) { showToast.warning("أضف سؤالًا واحدًا على الأقل قبل حفظ القالب."); return; }
     const boardBanks = room.board.map(c=>{
-      const bank = Array.isArray((c as any).questionBank) && (c as any).questionBank.length ? (c as any).questionBank : (c.question ? [{ question:c.question, answer:c.answer, category:c.category||"غير مصنف", difficulty:c.difficulty, points:c.points||1, hint:c.hint||"", explanation:c.explanation||"" }] : []);
+      const bank = Array.isArray((c as any).questionBank) && (c as any).questionBank.length ? (c as any).questionBank : (c.question ? [{ question:c.question, answer:c.answer, category:c.category||"غير مصنف", difficulty:c.difficulty, points:c.points||1, hint:c.hint||"", explanation:c.explanation||"", letter:c.label }] : []);
       return { cellId:c.id, label:c.label, questionBank: bank };
     });
     const totalQuestions = boardBanks.reduce((n,b)=>n+b.questionBank.length,0);
@@ -582,7 +634,21 @@ export default function HostView() {
         const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
         const parsed = JSON.parse(await file.text());
         if (!parsed || typeof parsed.name!=="string") throw new Error();
-        const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:parsed.name, categories:Array.isArray(parsed.categories)?parsed.categories:["غير مصنف"], level:parsed.level==="سهل"||parsed.level==="متوسط"||parsed.level==="صعب"?parsed.level:"متوسط", questions:Array.isArray(parsed.questions)?parsed.questions:[], boardBanks:Array.isArray(parsed.boardBanks)?parsed.boardBanks:[], createdAt:new Date().toISOString(), userCreated:true };
+        const safeBanks = Array.isArray(parsed.boardBanks) ? parsed.boardBanks.map((b:any)=>({
+          cellId: String(b?.cellId || ""),
+          label: String(b?.label || ""),
+          questionBank: Array.isArray(b?.questionBank) ? b.questionBank.filter((q:any)=>q?.question).map((q:any)=>({
+            question: String(q.question || "").trim(),
+            answer: String(q.answer || "").trim(),
+            category: String(q.category || "غير مصنف"),
+            difficulty: (q.difficulty==="easy"||q.difficulty==="medium"||q.difficulty==="hard") ? q.difficulty : "medium",
+            points: Number(q.points) || 1,
+            hint: String(q.hint || ""),
+            explanation: String(q.explanation || ""),
+            letter: String(q.letter || b?.label || ""),
+          })) : [],
+        })) : [];
+        const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:parsed.name, categories:Array.isArray(parsed.categories)?parsed.categories:["غير مصنف"], level:parsed.level==="سهل"||parsed.level==="متوسط"||parsed.level==="صعب"?parsed.level:"متوسط", questions:Array.isArray(parsed.questions)?parsed.questions:[], boardBanks:safeBanks, createdAt:new Date().toISOString(), userCreated:true };
         const next=[tpl, ...communityTemplates];
         setCommunityTemplates(next); localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
         showToast.success("تم استيراد القالب بنجاح.");
@@ -784,6 +850,10 @@ export default function HostView() {
               <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
                 {sortedBoard(room.board).map(cell=>(
                   (() => { const count = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank.length : (cell.question ? 1 : 0);
+                  const firstQ = Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank[0] : null;
+                  const qText = firstQ?.question || cell.question;
+                  const qCategory = firstQ?.category || cell.category;
+                  const qDifficulty = firstQ?.difficulty || cell.difficulty;
                   return (
                   <div key={cell.id} onClick={()=>setEditingCell(cell)}
                     style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.55rem 0.75rem",
@@ -796,12 +866,12 @@ export default function HostView() {
                       {cell.label}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      {cell.question
-                        ? <><div style={{ fontSize:"0.85rem", color:"#f0ede8", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cell.question}</div>
-                            <div style={{ fontSize:"0.72rem", color:"#64748b" }}>{cell.category && `${cell.category} • `}{cell.difficulty==="easy"?"سهل":cell.difficulty==="medium"?"متوسط":"صعب"} • عدد الأسئلة: {count}</div></>
+                      {qText
+                        ? <><div style={{ fontSize:"0.85rem", color:"#f0ede8", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{qText}</div>
+                            <div style={{ fontSize:"0.72rem", color:"#64748b" }}>{qCategory && `${qCategory} • `}{qDifficulty==="easy"?"سهل":qDifficulty==="medium"?"متوسط":"صعب"} • عدد الأسئلة: {count}</div></>
                         : <div style={{ fontSize:"0.85rem", color:"#3d5068" }}>هذا الحرف لا يحتوي على سؤال بعد</div>}
                     </div>
-                    <span style={{ fontSize:"0.75rem", color: cell.question ? "#22c55e" : "#ef4444" }}>{cell.question?"✓":"!"}</span>
+                    <span style={{ fontSize:"0.75rem", color: qText ? "#22c55e" : "#ef4444" }}>{qText?"✓":"!"}</span>
                   </div>
                   ); })()
                 ))}
@@ -830,11 +900,11 @@ export default function HostView() {
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
                 {[...STARTER_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).map(tpl => (
                   <div key={tpl.id} style={{ background:"#141e2d", border:"1.5px solid #1a2332", borderRadius:"14px", padding:"0.85rem" }}>
-                    <div style={{ fontWeight:800, color:"#f0ede8", marginBottom:"0.35rem" }}>اسم القالب: {tpl.name}</div>
+                    <div style={{ fontWeight:800, color:"#f0ede8", marginBottom:"0.35rem" }}>{tpl.name}</div>
                     <div style={{ fontSize:"0.74rem", color:"#94a3b8", lineHeight:1.8 }}>
-                      <div>التصنيفات: {tpl.categories.join("، ")}</div>
+                      <div>التصنيف: {tpl.categories.join("، ")}</div>
                       <div>المستوى: {tpl.level}</div>
-                      <div>عدد الأسئلة: {tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length}</div>
+                      <div>{tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length} أسئلة</div>
                       {tpl.createdAt && <div>تاريخ الحفظ: {new Date(tpl.createdAt).toLocaleDateString("ar")}</div>}
                     </div>
                     <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
