@@ -87,7 +87,7 @@ export default function ParticipantView() {
       <div style={{ textAlign:"center", maxWidth:400 }}>
         <div style={{ fontSize:"3rem", marginBottom:"1rem" }}>⚙️</div>
         <div style={{ fontSize:"1.25rem", fontWeight:700, color:"#f59e0b", marginBottom:"0.5rem" }}>تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا.</div>
-        <div style={{ color:"#64748b", fontSize:"0.9rem", marginBottom:"1.5rem" }}>يجب إضافة إعدادات Firebase لتفعيل اللعب المباشر.</div>
+        <div style={{ color:"#64748b", fontSize:"0.9rem", marginBottom:"1.5rem" }}>يجب إضافة إعدادات الخدمة لتفعيل اللعب المباشر.</div>
         <a href="/join" style={{ display:"inline-block", padding:"0.6rem 1.5rem", background:"#f59e0b", color:"#090d18", borderRadius:"10px", fontWeight:700, textDecoration:"none" }}>العودة</a>
       </div>
     </div>

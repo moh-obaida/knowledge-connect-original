@@ -202,7 +202,7 @@ export default function HostView() {
   const push = useCallback(async (updates: Partial<RoomState>) => {
     if (!roomCode) return;
     try { await updateRoom(roomCode, updates); }
-    catch (e) { console.error(e); showToast.error("فشل الاتصال بـ Firebase"); }
+    catch (e) { console.error(e); showToast.error("فشل الاتصال بالخدمة"); }
   }, [roomCode]);
 
   // Create room
@@ -393,8 +393,8 @@ export default function HostView() {
           <div style={{ background:"#0f1623", border:"1.5px solid #1a2332", borderRadius:"16px", padding:"1.5rem", textAlign:"right" }}>
             <div className="section-title">خطوات الإعداد</div>
             <ol style={{ color:"#94a3b8", fontSize:"0.85rem", lineHeight:2, paddingRight:"1.25rem" }}>
-              <li>أنشئ مشروع Firebase على <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" style={{ color:"#f59e0b" }}>console.firebase.google.com</a></li>
-              <li>فعّل Realtime Database</li>
+              <li>أنشئ مشروع الخدمة على <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" style={{ color:"#f59e0b" }}>لوحة الخدمة</a></li>
+              <li>فعّل قاعدة البيانات المباشرة</li>
               <li>أنشئ ملف <code style={{ color:"#f59e0b" }}>إعدادات المشروع</code> وأضف متغيرات الخدمة</li>
               <li>أعد تشغيل الخادم</li>
             </ol>
