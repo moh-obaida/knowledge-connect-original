@@ -230,7 +230,7 @@ export default function ParticipantView() {
             </div>
           );
         })()}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+        <div className="responsive-spectator-layout" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
           {/* Board */}
           <div style={{ background:"#0f1623", border:"1.5px solid #1a2332", borderRadius:"20px", padding:"1rem", overflow:"hidden", gridColumn:"1" }}>
             <div style={{ fontSize:"0.78rem", fontWeight:700, color:"#64748b", textAlign:"center", marginBottom:"0.5rem" }}>لوحة اللعب</div>

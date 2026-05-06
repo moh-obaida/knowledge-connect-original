@@ -91,10 +91,10 @@ function CellEditor({ cell, onSave, onClose }: {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" style={{ maxWidth: 520, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.25rem" }}>
+      <div className="modal-box modal-box-scroll" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header-safe" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.25rem" }}>
           <div style={{ fontWeight:800, fontSize:"1.1rem", color:"#f59e0b" }}>إعداد سؤال الحرف: <span style={{ fontSize:"1.4rem" }}>{cell.label}</span></div>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"#64748b", fontSize:"1.2rem" }}>✕</button>
+          <button onClick={onClose} aria-label="إغلاق" style={{ background:"#141e2d", border:"1px solid #253347", color:"#cbd5e1", fontSize:"1.2rem", width:34, height:34, borderRadius:"9999px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, zIndex:5 }}>✕</button>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem" }}>
           <div style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.6rem" }}>
@@ -119,7 +119,7 @@ function CellEditor({ cell, onSave, onClose }: {
             <label style={lbl}>الإجابة الصحيحة *</label>
             <input value={a} onChange={e=>setA(e.target.value)} placeholder="اكتب الإجابة الصحيحة هنا..." className="kc-input" />
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
+          <div className="responsive-two-col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
             <div>
               <label style={lbl}>التصنيف</label>
               <input value={cat} onChange={e=>setCat(e.target.value)} placeholder="اكتب التصنيف..." className="kc-input" />
@@ -161,7 +161,8 @@ type StarterTemplate = {
   id: string;
   name: string;
   categories: string[];
-  level: "سهل" | "متوسط" | "صعب";
+  level: "مبتدئ" | "سهل" | "متوسط" | "صعب" | "مفتوح";
+  description: string;
   questions: string[];
   boardBanks?: Array<{ cellId:string; label:string; questionBank:any[] }>;
   createdAt?: string;
@@ -215,17 +216,18 @@ const createFullLetterTemplate = (id: string, name: string, category: string, le
   return { id, name, categories: [category], level, questions: boardBanks.map(b => b.questionBank[0].question), boardBanks };
 };
 const STARTER_TEMPLATES: StarterTemplate[] = [
-  createFullLetterTemplate("teen1", "تحدي الثقافة العامة", "ثقافة عامة", "متوسط", 3),
-  createFullLetterTemplate("teen2", "تحدي التقنية والذكاء الاصطناعي", "تقنية", "متوسط", 3),
-  createFullLetterTemplate("teen3", "تحدي القيم والحياة اليومية", "حياة يومية", "سهل"),
-  createFullLetterTemplate("teen4", "تحدي اللغة العربية للمراهقين", "لغة عربية", "متوسط", 3),
-  { id:"t1", name:"قالب إسلاميات مبسط", categories:["إسلاميات"], level:"سهل", questions:["ما أول أركان الإسلام؟","ما اسم أول سورة في القرآن الكريم؟","ماذا نقول قبل قراءة القرآن؟","من هو خاتم الأنبياء؟","ما اسم الكتاب الذي أنزله الله على سيدنا محمد ﷺ؟","كم عدد الصلوات المفروضة في اليوم؟","ماذا نقول عند بداية الطعام؟","ما القبلة التي يتجه إليها المسلم في الصلاة؟","ما الشهر الذي يصوم فيه المسلمون؟","ما معنى الصدق؟"] },
-  { id:"t2", name:"قالب لغة عربية للحروف", categories:["لغة عربية"], level:"سهل", questions:["اختر كلمة تبدأ بحرف الألف.","ما الحرف الأول في كلمة: باب؟","أكمل الكلمة بالحرف المناسب: _سد","اختر الكلمة المختلفة.","ما الحرف الأخير في كلمة: كتاب؟","أي كلمة تبدأ بحرف الميم؟","أكمل الكلمة: قـ_ر","ما الحرف الأول في كلمة: وردة؟","أي كلمة تحتوي على حرف السين؟","اختر كلمة تنتهي بحرف النون."] },
-  { id:"t3", name:"قالب رياضيات سريع", categories:["رياضيات"], level:"متوسط", questions:["ما ناتج ٣ + ٤؟","اختر العدد الأكبر: ٨ أم ٥؟","إذا كان مع أحمد ٥ أقلام وأعطى صديقه ٢، كم بقي معه؟","أكمل النمط: ٢، ٤، ٦، __","ما ناتج ١٠ - ٣؟","أي عدد أصغر: ٦ أم ٩؟","ما ناتج ٢ × ٣؟","إذا كان لديك ٤ تفاحات وأضفت ٣، كم يصبح المجموع؟","أكمل: ٥، ١٠، ١٥، __","كم ضلعًا للمثلث؟"] },
-  { id:"t4", name:"قالب معرفة عامة", categories:["معرفة عامة"], level:"سهل", questions:["كم يومًا في الأسبوع؟","ما لون السماء في النهار؟","ما الحيوان الذي يلقب بملك الغابة؟","ما الشيء الذي نستخدمه للكتابة؟","كم شهرًا في السنة؟","ما الكوكب الذي نعيش عليه؟","ما الحيوان الذي يعطينا الحليب؟","ما وسيلة النقل التي تطير في السماء؟","ما العضو الذي نستخدمه للرؤية؟","ماذا نستخدم لقياس الوقت؟"] },
-  { id:"t5", name:"قالب مفردات", categories:["مفردات"], level:"متوسط", questions:["ما ضد كلمة \"كبير\"؟","ما مرادف كلمة \"سعيد\"؟","ما معنى كلمة \"أمانة\"؟","اختر ضد كلمة \"سريع\".","اختر مرادف كلمة \"جميل\".","ما ضد كلمة \"قريب\"؟","اختر الكلمة التي تدل على النظافة.","ما مرادف كلمة \"منزل\"؟","ما ضد كلمة \"ليل\"؟","اختر الكلمة المناسبة: طالب ____ الدرس."] },
-  { id:"t6", name:"قالب قراءة وفهم", categories:["قراءة وفهم"], level:"متوسط", questions:["اقرأ: \"ذهب سالم إلى المدرسة صباحًا.\" أين ذهب سالم؟","اقرأ: \"شربت مريم الحليب.\" ماذا شربت مريم؟","اقرأ: \"جلس الطفل تحت الشجرة.\" أين جلس الطفل؟","اقرأ: \"اشترى خالد كتابًا جديدًا.\" ماذا اشترى خالد؟","اقرأ: \"ساعدت فاطمة أمها في البيت.\" من ساعدت فاطمة؟","اقرأ: \"طار العصفور فوق الشجرة.\" أين طار العصفور؟","اقرأ: \"زرع علي وردة في الحديقة.\" ماذا زرع علي؟","اقرأ: \"قرأ الطالب القصة بهدوء.\" ماذا قرأ الطالب؟","اقرأ: \"لعب الأطفال في الحديقة.\" أين لعب الأطفال؟","اقرأ: \"أكلت القطة السمكة.\" ماذا أكلت القطة؟"] },
-  { id:"t7", name:"قالب مراجعة شاملة", categories:["إسلاميات","لغة عربية","رياضيات","معرفة عامة"], level:"متوسط", questions:["ما أول أركان الإسلام؟","اختر كلمة تبدأ بحرف الألف.","ما ناتج ٣ + ٤؟","كم يومًا في الأسبوع؟","ما الحرف الأول في كلمة: باب؟","ما ناتج ١٠ - ٣؟","ما الشهر الذي يصوم فيه المسلمون؟","ما لون السماء في النهار؟","أكمل النمط: ٢، ٤، ٦، __","ما القبلة التي يتجه إليها المسلم في الصلاة؟"] },
+  { id:"tpl-basic-letters", name:"قالب الحروف الأساسية", categories:["لغة عربية"], level:"مبتدئ", description:"لعبة بسيطة للتدرب على الحروف العربية.", questions:[], boardBanks:createFullLetterTemplate("x","x","لغة عربية","سهل",2).boardBanks },
+  { id:"tpl-islamic", name:"قالب أسئلة إسلامية", categories:["تربية إسلامية"], level:"سهل", description:"أسئلة قصيرة عن القيم والأخلاق الإسلامية.", questions:[], boardBanks:createFullLetterTemplate("x","x","تربية إسلامية","سهل",2).boardBanks },
+  { id:"tpl-arabic", name:"قالب اللغة العربية", categories:["لغة عربية"], level:"متوسط", description:"أسئلة عن الحروف والكلمات والمعاني.", questions:[], boardBanks:createFullLetterTemplate("x","x","لغة عربية","متوسط",3).boardBanks },
+  { id:"tpl-science", name:"قالب العلوم", categories:["علوم"], level:"متوسط", description:"أسئلة مراجعة بسيطة في العلوم.", questions:[], boardBanks:createFullLetterTemplate("x","x","علوم","متوسط",2).boardBanks },
+  { id:"tpl-quick", name:"قالب مراجعة سريعة", categories:["عام"], level:"سهل", description:"قالب سريع للمراجعة قبل الاختبار.", questions:[], boardBanks:createFullLetterTemplate("x","x","عام","سهل",2).boardBanks },
+  { id:"tpl-empty", name:"قالب فارغ للمعلم", categories:["مخصص"], level:"مفتوح", description:"ابدأ من الصفر وأضف أسئلتك الخاصة.", questions:[], boardBanks:[] },
+];
+const DEMO_COMMUNITY_TEMPLATES: StarterTemplate[] = [
+  { id:"comm-1", name:"تحدي الحروف الممتع", categories:["لغة عربية"], level:"سهل", description:"نسخة مجتمع محلية لتدريب القراءة السريعة.", questions:[], boardBanks:createFullLetterTemplate("x","x","لغة عربية","سهل",2).boardBanks },
+  { id:"comm-2", name:"مراجعة القيم الإسلامية", categories:["تربية إسلامية"], level:"سهل", description:"بطاقات سريعة عن السلوك والقيم اليومية.", questions:[], boardBanks:createFullLetterTemplate("x","x","تربية إسلامية","سهل",2).boardBanks },
+  { id:"comm-3", name:"مسابقة الكلمات السريعة", categories:["لغة عربية"], level:"متوسط", description:"تحدي كلمات ومعانٍ بزمن قصير.", questions:[], boardBanks:createFullLetterTemplate("x","x","لغة عربية","متوسط",2).boardBanks },
+  { id:"comm-4", name:"تحدي العلوم الخفيف", categories:["علوم"], level:"متوسط", description:"مراجعة تمهيدية لمفاهيم العلوم الأساسية.", questions:[], boardBanks:createFullLetterTemplate("x","x","علوم","متوسط",2).boardBanks },
 ];
 
 // ── Color presets ─────────────────────────────────────────────
@@ -651,7 +653,7 @@ export default function HostView() {
     });
     const totalQuestions = boardBanks.reduce((n,b)=>n+b.questionBank.length,0);
     const cats = Array.from(new Set(boardBanks.flatMap(b=>b.questionBank.map((q:any)=>q.category||"غير مصنف"))));
-    const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:templateName.trim(), categories:cats as string[], level:"متوسط", questions:boardBanks.flatMap(b=>b.questionBank.map((q:any)=>q.question)), boardBanks, createdAt:new Date().toISOString(), userCreated:true };
+    const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:templateName.trim(), categories:cats as string[], level:"متوسط", description:"قالب محلي محفوظ على هذا الجهاز.", questions:boardBanks.flatMap(b=>b.questionBank.map((q:any)=>q.question)), boardBanks, createdAt:new Date().toISOString(), userCreated:true };
     const next=[tpl, ...communityTemplates];
     setCommunityTemplates(next);
     localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
@@ -757,7 +759,7 @@ export default function HostView() {
             letter: String(q.letter || b?.label || ""),
           })) : [],
         })) : [];
-        const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:parsed.name, categories:Array.isArray(parsed.categories)?parsed.categories:["غير مصنف"], level:parsed.level==="سهل"||parsed.level==="متوسط"||parsed.level==="صعب"?parsed.level:"متوسط", questions:Array.isArray(parsed.questions)?parsed.questions:[], boardBanks:safeBanks, createdAt:new Date().toISOString(), userCreated:true };
+        const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:parsed.name, categories:Array.isArray(parsed.categories)?parsed.categories:["غير مصنف"], level:parsed.level==="مبتدئ"||parsed.level==="سهل"||parsed.level==="متوسط"||parsed.level==="صعب"||parsed.level==="مفتوح"?parsed.level:"متوسط", description:String(parsed.description||"قالب مستورد محليًا"), questions:Array.isArray(parsed.questions)?parsed.questions:[], boardBanks:safeBanks, createdAt:new Date().toISOString(), userCreated:true };
         const next=[tpl, ...communityTemplates];
         setCommunityTemplates(next); localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
         showToast.success("تم استيراد القالب بنجاح.");
@@ -826,7 +828,7 @@ export default function HostView() {
       {editingCell && <CellEditor cell={editingCell} onSave={saveCellQ} onClose={()=>setEditingCell(null)} />}
       {previewTemplate && (
         <div className="modal-overlay" onClick={()=>setPreviewTemplate(null)}>
-          <div className="modal-box" style={{ maxWidth: 560 }} onClick={e=>e.stopPropagation()}>
+          <div className="modal-box modal-box-scroll" style={{ maxWidth: 560 }} onClick={e=>e.stopPropagation()}>
             <div style={{ fontWeight:800, color:"#f59e0b", marginBottom:"0.45rem" }}>معاينة</div>
             <div style={{ fontWeight:700, color:"#f0ede8", marginBottom:"0.35rem" }}>{previewTemplate.name}</div>
             <div style={{ fontSize:"0.8rem", color:"#94a3b8", marginBottom:"0.8rem" }}>
@@ -988,20 +990,20 @@ export default function HostView() {
             </div>
 
             <div className="kc-card" style={{ gridColumn:"1 / -1" }}>
-              <div className="section-title">قوالب المجتمع</div>
+              <div className="section-title">قوالب الألعاب</div>
               <div style={{ fontSize:"0.82rem", color:"#94a3b8", marginBottom:"0.8rem" }}>
                 احفظ بنك الأسئلة الحالي كقالب، أو استخدم قالبًا جاهزًا/محفوظًا.
                 <div style={{ marginTop:"0.35rem" }}>يمكنك تعديل القالب في Excel ثم استيراده مرة أخرى.</div>
-                <div>يمكنك مشاركة القوالب مع الآخرين عن طريق تصديرها كجدول Excel.</div>
+                <div>كل القوالب هنا محلية فقط (بدون تسجيل دخول أو مشاركة عبر الإنترنت).</div>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
                 <input className="kc-input" style={{ maxWidth:240 }} placeholder="اسم القالب" value={templateName} onChange={e=>setTemplateName(e.target.value)} />
-                <button className="btn-gold" onClick={saveCurrentAsTemplate}>حفظ كقالب</button>
-                <button className="btn-secondary" onClick={importTemplate}>استيراد قالب</button>
-                <button className="btn-secondary" onClick={importTemplateCsv}>استيراد من جدول</button>
+                <button className="btn-gold" onClick={saveCurrentAsTemplate}>إنشاء لعبة جديدة</button>
+                <button className="btn-secondary" onClick={importTemplate}>استيراد قالب (محلي)</button>
+                <button className="btn-secondary" onClick={importTemplateCsv}>استيراد من جدول (محلي)</button>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
-                <input className="kc-input" style={{ maxWidth:240 }} placeholder="ابحث عن قالب..." value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
+                <input className="kc-input" style={{ maxWidth:240 }} placeholder="ابحث في قوالب الألعاب..." value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
                 <select className="kc-input" style={{ maxWidth:180 }} value={templateCategory} onChange={e=>setTemplateCategory(e.target.value)}>
                   <option value="">التصنيف</option><option value="إسلاميات">إسلاميات</option><option value="لغة عربية">لغة عربية</option><option value="رياضيات">رياضيات</option><option value="معرفة عامة">معرفة عامة</option><option value="مفردات">مفردات</option><option value="قراءة وفهم">قراءة وفهم</option><option value="تقنية">تقنية</option><option value="حياة يومية">حياة يومية</option><option value="غير مصنف">غير مصنف</option>
                 </select>
@@ -1009,14 +1011,16 @@ export default function HostView() {
                   <option value="">المستوى</option><option value="سهل">سهل</option><option value="متوسط">متوسط</option><option value="صعب">صعب</option>
                 </select>
               </div>
+              <div style={{ fontWeight:700, color:"#94a3b8", marginBottom:"0.5rem" }}>قوالب من المجتمع</div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
-                {[...STARTER_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).map(tpl => {
+                {[...STARTER_TEMPLATES, ...DEMO_COMMUNITY_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).map(tpl => {
                   const totalQ = tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length;
                   const covered = tpl.boardBanks?.filter(b=>b.questionBank?.length).length || 0;
                   const avg = covered ? (totalQ / covered).toFixed(1) : "0";
                   return (
                   <div key={tpl.id} style={{ background:"#141e2d", border:"1.5px solid #1a2332", borderRadius:"14px", padding:"0.85rem" }}>
                     <div style={{ fontWeight:800, color:"#f0ede8", marginBottom:"0.35rem" }}>{tpl.name}</div>
+                    <div style={{ fontSize:"0.75rem", color:"#cbd5e1", marginBottom:"0.35rem" }}>{tpl.description}</div>
                     <div style={{ fontSize:"0.74rem", color:"#94a3b8", lineHeight:1.8 }}>
                       <div>التصنيف: {tpl.categories.join("، ")}</div>
                       <div>المستوى: {tpl.level}</div>
@@ -1028,7 +1032,7 @@ export default function HostView() {
                     </div>
                     <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button>
-                      <button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={()=>useTemplate(tpl)}>استخدام القالب</button>
+                      <button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={()=>useTemplate(tpl)}>استخدم القالب</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>duplicateTemplate(tpl)}>نسخ القالب</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplate(tpl)}>تصدير القالب</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplateCsv(tpl)}>تصدير كجدول</button>
@@ -1043,13 +1047,13 @@ export default function HostView() {
 
         {/* ══ TAB: Game ══ */}
         {activeTab==="game" && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1.4fr", gap:"1.25rem" }}>
+          <div className="responsive-game-layout" style={{ display:"grid", gridTemplateColumns:"1fr 1.4fr", gap:"1.25rem" }}>
             {/* Left: controls */}
             <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
               {/* Teams */}
               <div className="kc-card">
                 <div className="section-title">الفرق</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
+                <div className="responsive-two-col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
                   {([1,2] as const).map(t=>{
                     const team = t===1 ? room.team1 : room.team2;
                     const score = t===1 ? room.team1Score : room.team2Score;
@@ -1210,7 +1214,7 @@ function SettingsTab({ room, push, roomCode }: { room: RoomState; push: (u: Part
   const [settingsSection, setSettingsSection] = useState<"teams"|"game"|"players"|"links"|"danger">("teams");
 
   return (
-    <div style={{ display:"grid", gridTemplateColumns:"180px 1fr", gap:"1.25rem" }}>
+    <div className="responsive-settings-layout" style={{ display:"grid", gridTemplateColumns:"180px 1fr", gap:"1.25rem" }}>
       {/* Side nav */}
       <div className="kc-card" style={{ padding:"0.75rem", height:"fit-content" }}>
         {([
@@ -1326,7 +1330,7 @@ function GameSettings({ room, push }: { room: RoomState; push: (u: Partial<RoomS
   return (
     <div className="kc-card">
       <div className="section-title">إعدادات اللعبة</div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
+      <div className="responsive-two-col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
         <div><label style={lbl2}>عنوان اللعبة</label><input value={gt} onChange={e=>setGt(e.target.value)} className="kc-input" /></div>
         <div><label style={lbl2}>شعار نصي اختياري</label><input value={lt} onChange={e=>setLt(e.target.value)} placeholder="اختياري..." className="kc-input" /></div>
         <div><label style={lbl2}>حجم اللوحة</label>

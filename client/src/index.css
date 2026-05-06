@@ -322,3 +322,41 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   outline: 3px solid rgba(245,158,11,0.45);
   outline-offset: 2px;
 }
+
+@media (max-width: 1100px) {
+  .responsive-game-layout,
+  .responsive-spectator-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .responsive-settings-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .responsive-two-col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-box {
+    border-radius: 16px;
+    padding: 1rem;
+    max-height: min(88dvh, 88vh);
+    overflow-y: auto;
+  }
+  .modal-box-scroll {
+    max-height: min(88dvh, 88vh);
+    overflow-y: auto;
+    padding-top: 0.8rem;
+  }
+  .modal-header-safe {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    background: #0f1623;
+    padding-top: 0.2rem;
+    padding-bottom: 0.3rem;
+  }
+}
