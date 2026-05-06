@@ -22,7 +22,7 @@ export default function HexBoard({
   const safeGrid = ([4, 5, 6].includes(gridSize) ? gridSize : 5) as 4 | 5 | 6;
   const cellSize = compact ? (safeGrid === 4 ? 70 : safeGrid === 5 ? 60 : 52)
                            : (safeGrid === 4 ? 90 : safeGrid === 5 ? 78 : 66);
-  const gap = 5;
+  const gap = 1;
 
   return (
     <div style={{ position: "relative", padding: "8px" }}>
@@ -99,7 +99,7 @@ export default function HexBoard({
                 boxShadow: shadow,
                 outline: border,
                 outlineOffset: "-2px",
-                marginTop: isOddRow ? cellSize * 0.38 : 0,
+                marginTop: isOddRow ? cellSize * 0.34 : 0,
                 animation: isSelected ? "hexGlow 1.5s ease-in-out infinite" : "none",
                 userSelect: "none",
               }}
