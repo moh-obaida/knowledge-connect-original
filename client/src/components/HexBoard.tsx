@@ -98,8 +98,8 @@ export default function HexBoard({
                 transition: "all 0.2s ease",
                 boxShadow: shadow,
                 outline: border,
-                outlineOffset: "-2px",
-                marginTop: isOddRow ? cellSize * 0.30 : 0,
+                outlineOffset: "-3px",
+                marginTop: isOddRow ? cellSize * 0.26 : 0,
                 animation: isSelected ? "hexGlow 1.5s ease-in-out infinite" : "none",
                 userSelect: "none",
               }}
