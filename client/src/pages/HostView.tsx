@@ -305,6 +305,8 @@ export default function HostView() {
   const [hostAnswerFeedback, setHostAnswerFeedback] = useState<string>("");
   const [appearanceMode, setAppearanceMode] = useState<"light"|"balanced"|"dark">(((localStorage.getItem("kc_appearance_mode") as any) || "dark"));
   const [visualTheme, setVisualTheme] = useState<string>(localStorage.getItem("kc_visual_theme") || "classic");
+  const [hostViewMode, setHostViewMode] = useState<"dashboard"|"room">("dashboard");
+  const [dashboardTab, setDashboardTab] = useState<"home"|"games"|"templates"|"results"|"settings">("home");
   const hostProfile = (() => {
     try { return JSON.parse(localStorage.getItem("kc_host_profile") || "{}"); }
     catch { return {}; }
@@ -387,6 +389,7 @@ export default function HostView() {
       unsubRef.current?.();
       unsubRef.current = subscribeToRoom(code, s => { if (s) setRoom(s); });
       showToast.success(`تم إنشاء الغرفة! الرمز: ${code}`);
+      setHostViewMode("room");
     } catch (e) { console.error(e); showToast.error("فشل إنشاء الغرفة"); }
     setCreating(false);
   };
@@ -832,6 +835,43 @@ export default function HostView() {
   }
 
   // ── No room yet ──
+  if (hostViewMode === "dashboard") {
+    const templatesCount = STARTER_TEMPLATES.length + communityTemplates.length;
+    const gamesCount = communityTemplates.filter(t=>t.userCreated).length;
+    return (
+      <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#090d18 0%,#0f172a 60%,#090d18 100%)", padding:"1rem" }}>
+        <div style={{ maxWidth:1200, margin:"0 auto" }}>
+          <div className="kc-card" style={{ marginBottom:"0.8rem" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", gap:"0.7rem", flexWrap:"wrap", alignItems:"center" }}>
+              <div>
+                <div style={{ fontSize:"1.45rem", fontWeight:900, color:"#f59e0b" }}>وصلة المعرفة - لوحة التحكم</div>
+                <div style={{ color:"#94a3b8", fontSize:"0.84rem" }}>مرحباً {hostProfile.hostName || "بك"} {hostProfile.className && `• ${hostProfile.className}`} {hostProfile.orgName && `• ${hostProfile.orgName}`}</div>
+              </div>
+              <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap" }}>
+                <button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>{room ? "بدء الاستضافة" : (creating ? "جارٍ الإنشاء..." : "إنشاء لعبة جديدة")}</button>
+                <button className="btn-secondary" onClick={()=>{ localStorage.removeItem("kc_host_profile"); setLocation("/"); }}>الخروج</button>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
+              {[{id:"home",l:"الرئيسية"},{id:"games",l:"ألعابي"},{id:"templates",l:"القوالب"},{id:"results",l:"النتائج"},{id:"settings",l:"الإعدادات"}].map((t:any)=>(
+                <button key={t.id} className="btn-secondary" style={{ background:dashboardTab===t.id?"#f59e0b":"#1a2332", color:dashboardTab===t.id?"#090d18":"#cbd5e1" }} onClick={()=>setDashboardTab(t.id)}>{t.l}</button>
+              ))}
+            </div>
+          </div>
+          {dashboardTab==="home" && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:"0.8rem" }}>
+            <div className="kc-card"><div className="section-title">إجراءات سريعة</div><div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap" }}><button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>بدء الاستضافة</button><button className="btn-secondary" onClick={()=>setDashboardTab("templates")}>اختيار قالب</button><button className="btn-secondary" onClick={importBoard}>استيراد لعبة</button><button className="btn-secondary" onClick={()=>setDashboardTab("results")}>عرض النتائج</button></div></div>
+            <div className="kc-card"><div className="section-title">إحصاءات</div><div style={{ display:"grid", gap:"0.4rem" }}>{[{k:"القوالب المتاحة",v:templatesCount},{k:"الألعاب المحفوظة",v:gamesCount},{k:"النتائج المحفوظة",v:0},{k:"آخر لعبة",v:room?.gameTitle || "—"}].map(s=><div key={s.k} style={{ display:"flex", justifyContent:"space-between", color:"#cbd5e1" }}><span>{s.k}</span><strong>{s.v}</strong></div>)}</div></div>
+            <div className="kc-card"><div className="section-title">ألعابي</div><div style={{ color:"#94a3b8", fontSize:"0.84rem" }}>لا توجد ألعاب محفوظة بعد. أنشئ لعبة جديدة أو استخدم أحد القوالب.</div></div>
+            <div className="kc-card"><div className="section-title">آخر النتائج</div><div style={{ color:"#94a3b8", fontSize:"0.84rem" }}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div></div>
+          </div>}
+          {dashboardTab==="templates" && <div className="kc-card"><div className="section-title">القوالب</div><div style={{ color:"#94a3b8" }}>عرض القوالب واستخدامها من شاشة الاستضافة.</div><button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>استخدام القالب</button></div>}
+          {dashboardTab==="games" && <div className="kc-card"><div className="section-title">ألعابي</div><input className="kc-input" placeholder="ابحث عن لعبة..." /><div style={{ color:"#94a3b8", marginTop:"0.6rem" }}>لا توجد ألعاب محفوظة بعد.</div></div>}
+          {dashboardTab==="results" && <div className="kc-card"><div className="section-title">النتائج</div><button className="btn-secondary">تصدير كل النتائج</button><div style={{ color:"#94a3b8", marginTop:"0.6rem" }}>لا توجد نتائج محفوظة بعد.</div></div>}
+          {dashboardTab==="settings" && <div className="kc-card"><div className="section-title">الإعدادات</div><div style={{ color:"#94a3b8" }}>بيانات المضيف • إعدادات اللعبة الافتراضية • البيانات المحلية</div></div>}
+        </div>
+      </div>
+    );
+  }
   if (!room) {
     return (
       <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(160deg,#090d18 0%,#0f172a 60%,#090d18 100%)", padding:"2rem" }}>
@@ -933,6 +973,7 @@ export default function HostView() {
               {tab.label}
             </button>
           ))}
+          <button className="btn-secondary" style={{ marginInlineStart:"auto", whiteSpace:"nowrap" }} onClick={()=>setHostViewMode("dashboard")}>العودة إلى لوحة التحكم</button>
         </div>
       </div>
 

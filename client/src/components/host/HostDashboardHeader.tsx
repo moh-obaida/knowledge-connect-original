@@ -38,7 +38,7 @@ export default function HostDashboardHeader(p: Props) {
             <select className="kc-input" style={{ fontSize:"0.75rem", maxWidth:120 }} aria-label="السمة البصرية" value={p.visualTheme} onChange={e=>p.setVisualTheme(e.target.value)}><option value="classic">كلاسيكي</option><option value="school">مدرسي</option><option value="space">فضاء</option><option value="ramadan">رمضان</option><option value="science">علوم</option><option value="vivid">زاهٍ</option></select>
             {room.gameStatus==="lobby" && <button className="btn-gold" style={{ fontSize:"0.8rem", minHeight: 40 }} onClick={p.startGame}>▶ بدء اللعبة</button>}
             <button className="btn-danger" style={{ fontSize:"0.8rem", minHeight: 40 }} onClick={p.resetGame}>↺ إعادة اللعب</button>
-            <button className="btn-secondary" style={{ fontSize:"0.8rem", minHeight: 40 }} onClick={p.onLogout}>العودة إلى لوحة التحكم</button>
+            <button className="btn-secondary" style={{ fontSize:"0.8rem", minHeight: 40 }} onClick={p.onLogout}>الخروج</button>
           </div>
         </div>
         <div style={{ display:"grid", gap:"0.45rem", gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))" }}>
