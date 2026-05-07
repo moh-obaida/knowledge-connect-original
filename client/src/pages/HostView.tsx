@@ -371,6 +371,10 @@ export default function HostView() {
     }
     const ap = localStorage.getItem("kc_appearance");
     if (ap === "dark" || ap === "light" || ap === "mid") setAppearance(ap);
+    if (localStorage.getItem("kc_open_templates") === "1") {
+      setAppView("templates");
+      localStorage.removeItem("kc_open_templates");
+    }
     const rr = localStorage.getItem(RESULTS_KEY);
     if (rr) {
       const parsed = JSON.parse(rr);
