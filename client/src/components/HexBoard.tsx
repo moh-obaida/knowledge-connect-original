@@ -21,16 +21,16 @@ export default function HexBoard({
 }: HexBoardProps) {
   const sorted = sortedBoard(board);
   const safeGrid = ([4, 5, 6].includes(gridSize) ? gridSize : 5) as 4 | 5 | 6;
-  const cellSize = compact ? (safeGrid === 4 ? 68 : safeGrid === 5 ? 58 : 50)
-                           : (safeGrid === 4 ? 84 : safeGrid === 5 ? 72 : 62);
+  const cellSize = compact ? (safeGrid === 4 ? 62 : safeGrid === 5 ? 54 : 46)
+                           : (safeGrid === 4 ? 76 : safeGrid === 5 ? 66 : 56);
   const rows = Array.from({ length: safeGrid }, (_, row) =>
     sorted.slice(row * safeGrid, row * safeGrid + safeGrid),
   );
-  const verticalOverlap = cellSize * 0.26;
-  const rowOffset = cellSize * 0.5;
+  const verticalOverlap = cellSize * 0.3;
+  const rowOffset = cellSize * 0.48;
 
   return (
-    <div style={{ position: "relative", padding: "8px", width: "100%", overflowX: "auto" }}>
+    <div style={{ position: "relative", padding: "6px", width: "100%", overflowX: "hidden" }}>
       {/* Path goal edge strips — only in game/participant mode */}
       {mode !== "setup" && (
         <>
@@ -42,7 +42,7 @@ export default function HexBoard({
       )}
 
       {/* Connected honeycomb grid */}
-      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "max-content", minWidth: "100%", margin: "0 auto", padding: "8px 6px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "100%", margin: "0 auto", padding: "8px 2px" }}>
         {rows.map((rowCells, row) => (
           <div key={`row-${row}`} style={{ display: "grid", gridTemplateColumns: `repeat(${safeGrid}, ${cellSize}px)`, columnGap: `${-cellSize * 0.04}px`, marginInlineStart: row % 2 === 1 ? `${rowOffset}px` : 0 }}>
             {rowCells.map((cell) => {
