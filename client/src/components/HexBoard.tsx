@@ -19,9 +19,9 @@ export default function HexBoard({
 }: HexBoardProps) {
   const sorted = sortedBoard(board);
   const safeGrid = ([4, 5, 6].includes(gridSize) ? gridSize : 5) as 4 | 5 | 6;
-  const cellSize = compact ? (safeGrid === 4 ? 64 : safeGrid === 5 ? 56 : 48) : (safeGrid === 4 ? 84 : safeGrid === 5 ? 72 : 62);
-  const verticalOverlap = cellSize * 0.22;
-  const rowOffset = cellSize * 0.5;
+  const cellSize = compact ? (safeGrid === 4 ? 62 : safeGrid === 5 ? 54 : 46) : (safeGrid === 4 ? 82 : safeGrid === 5 ? 70 : 60);
+  const verticalOverlap = cellSize * 0.28;
+  const rowOffset = cellSize * 0.48;
   const rows = Array.from({ length: safeGrid }, (_, row) => sorted.slice(row * safeGrid, row * safeGrid + safeGrid));
 
   return (
@@ -35,9 +35,9 @@ export default function HexBoard({
         </>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "100%", paddingBottom: "6px" }}>
         {rows.map((rowCells, row) => (
-          <div key={`row-${row}`} style={{ display: "grid", gridTemplateColumns: `repeat(${safeGrid}, ${cellSize}px)`, marginInlineStart: row % 2 === 1 ? `${rowOffset}px` : 0 }}>
+          <div key={`row-${row}`} style={{ display: "grid", gridTemplateColumns: `repeat(${safeGrid}, ${cellSize}px)`, columnGap: `${-cellSize * 0.04}px`, marginInlineStart: row % 2 === 1 ? `${rowOffset}px` : 0 }}>
             {rowCells.map((cell) => {
               const claimed1 = cell.claimedBy === 1;
               const claimed2 = cell.claimedBy === 2;

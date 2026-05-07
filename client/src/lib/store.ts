@@ -173,42 +173,53 @@ export const saveLastRoomCode = (code: string) => safeSet(LS_LAST_ROOM, code);
 
 // ── BFS path-win ──────────────────────────────────────────────
 export function checkWinner(board: BoardCell[], gridSize: number): 0 | 1 | 2 {
-  const s = sortedBoard(board);
-  if (bfsWin(s, gridSize, 1, "horizontal")) return 1;
-  if (bfsWin(s, gridSize, 2, "vertical")) return 2;
+  if (findWinningPath(board, gridSize, 1).length) return 1;
+  if (findWinningPath(board, gridSize, 2).length) return 2;
   return 0;
 }
-function bfsWin(board: BoardCell[], size: number, team: 1|2, dir: "horizontal"|"vertical"): boolean {
-  const visited = new Set<number>(); const queue: number[] = [];
-  if (dir==="horizontal") {
-    for (let r = 0; r < size; r++) {
-      const i = r * size;
-      if (board[i]?.claimedBy === team) { queue.push(i); visited.add(i); }
-    }
-  } else {
-    for (let c = 0; c < size; c++) {
-      if (board[c]?.claimedBy === team) { queue.push(c); visited.add(c); }
-    }
+export function getHexNeighbors(index: number, size: number): number[] {
+  const r = Math.floor(index / size), c = index % size;
+  const deltas = r % 2 === 0
+    ? [[-1, 0], [-1, -1], [0, -1], [0, 1], [1, 0], [1, -1]]
+    : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
+  const out: number[] = [];
+  for (const [dr, dc] of deltas) {
+    const nr = r + dr, nc = c + dc;
+    if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+    out.push(nr * size + nc);
   }
-  while(queue.length){
+  return out;
+}
+export function findWinningPath(board: BoardCell[], size: number, team: 1|2): string[] {
+  const s = sortedBoard(board);
+  const queue: number[] = [];
+  const visited = new Set<number>();
+  const parent = new Map<number, number>();
+  const horizontal = team === 1;
+
+  for (let i = 0; i < s.length; i++) {
+    const r = Math.floor(i / size), c = i % size;
+    const isStart = horizontal ? c === 0 : r === 0;
+    if (isStart && s[i]?.claimedBy === team) { queue.push(i); visited.add(i); }
+  }
+  while (queue.length) {
     const cur = queue.shift()!;
     const r = Math.floor(cur / size), c = cur % size;
-    if (dir === "horizontal" && c === size - 1) return true;
-    if (dir === "vertical" && r === size - 1) return true;
-
-    const deltas = r % 2 === 0
-      ? [[-1, 0], [-1, -1], [0, -1], [0, 1], [1, 0], [1, -1]]
-      : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
-
-    for (const [dr, dc] of deltas) {
-      const nr = r + dr, nc = c + dc;
-      if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
-      const ni = nr * size + nc;
-      if (!visited.has(ni) && board[ni]?.claimedBy === team) {
-        visited.add(ni);
-        queue.push(ni);
-      }
+    const isTarget = horizontal ? c === size - 1 : r === size - 1;
+    if (isTarget) {
+      const path: number[] = [cur];
+      let p = cur;
+      while (parent.has(p)) { p = parent.get(p)!; path.push(p); }
+      path.reverse();
+      return path.map(i => s[i].id);
+    }
+    for (const ni of getHexNeighbors(cur, size)) {
+      if (visited.has(ni)) continue;
+      if (s[ni]?.claimedBy !== team) continue;
+      visited.add(ni);
+      parent.set(ni, cur);
+      queue.push(ni);
     }
   }
-  return false;
+  return [];
 }

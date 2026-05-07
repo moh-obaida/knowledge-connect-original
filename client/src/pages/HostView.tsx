@@ -5,7 +5,7 @@ import {
 } from "../lib/roomOps";
 import { isFirebaseConfigured } from "../lib/firebase";
 import {
-  defaultRoomState, generateBoard, shuffleBoard, sortedBoard, checkWinner,
+  defaultRoomState, generateBoard, shuffleBoard, sortedBoard, checkWinner, findWinningPath,
   loadLastRoomCode, saveLastRoomCode,
   type RoomState, type BoardCell, type ActiveQuestion, type Player,
 } from "../lib/store";
@@ -330,6 +330,7 @@ export default function HostView() {
   const [presentationMode, setPresentationMode] = useState(false);
   const [skippedCount, setSkippedCount] = useState(0);
   const [timerCustom, setTimerCustom] = useState(45);
+  const [winningPathIds, setWinningPathIds] = useState<string[]>([]);
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -492,10 +493,12 @@ export default function HostView() {
     const pts = room.activeQuestion?.points || 1;
     const scoreUp = room.activeTeam===1 ? { team1Score: room.team1Score+pts } : { team2Score: room.team2Score+pts };
     const winner = checkWinner(nb, room.gridSize);
+    const path = winner ? findWinningPath(nb, room.gridSize, winner as 1|2) : [];
     const winMsg = winner===1 ? `فاز ${room.team1.name}!` : winner===2 ? `فاز ${room.team2.name}!` : "";
     await push({ board:nb, ...scoreUp, questionStatus:"correct", selectedCellId:"",
       winnerMessage: winMsg, winnerTeam: winner,
       gameStatus: winMsg ? "finished" : room.gameStatus });
+    setWinningPathIds(path);
     if (winMsg) showToast.success(winMsg);
   };
 
@@ -623,6 +626,7 @@ export default function HostView() {
         timerRunning:false, timerValue:room.timerSetting, winnerMessage:"", winnerTeam:0,
         questionStatus:"idle", gameStatus:"lobby", activeTeam:1, roundNumber:1 });
       setSkippedCount(0);
+      setWinningPathIds([]);
       savedResultForRoundRef.current = "";
       showToast.success("تم إعادة ضبط اللعبة");
     });
@@ -1558,7 +1562,7 @@ export default function HostView() {
               </div>
               <HexBoard board={room.board} gridSize={room.gridSize} mode="host-game"
                 selectedCellId={room.selectedCellId} team1={room.team1} team2={room.team2}
-                onCellClick={handleCellClick} />
+                onCellClick={handleCellClick} winningPathIds={winningPathIds} />
               {room.activeQuestion && room.questionStatus!=="correct" && (
                 <button className="btn-gold" style={{ width:"100%", marginTop:"1rem", fontSize:"0.9rem" }} onClick={markCorrect} disabled={actionLock}>
                   🎯 منح الحرف "{room.activeQuestion.cellLabel}" للفريق النشط
