@@ -444,13 +444,25 @@ export default function HostView() {
     return `radial-gradient(circle at top, ${themeAccent[themeName]}33 0%, #090d18 60%)`;
   };
   const pageGradient = getPageGradient(appearance);
+
       setRoomCode(last);
-      const unsub = subscribeToRoom(last, s => {
-        if (s) setRoom(s); else { setRoom(null); setRoomCode(""); saveLastRoomCode(""); }
+
+      const unsub = subscribeToRoom(last, (s) => {
+        if (s) {
+          setRoom(s);
+        } else {
+          setRoom(null);
+          setRoomCode("");
+          saveLastRoomCode("");
+        }
       });
+
       unsubRef.current = unsub;
     }
-    return () => { unsubRef.current?.(); };
+
+    return () => {
+      unsubRef.current?.();
+    };
   }, []);
 
   // Timer
