@@ -52,5 +52,5 @@ export function checkAnswer(q: QuizQuestion, userAnswer: unknown) {
   const ca = q.correctAnswer.trim();
   const normalize = (v: string) => v.toLowerCase().replace(/\s+/g, " ");
   const isCorrect = normalize(ua) === normalize(ca);
-  return { isCorrect, correctAnswer: q.correctAnswer, feedback: isCorrect ? "Correct!" : "Wrong answer" };
+  return { isCorrect, correctAnswer: q.correctAnswer, feedback: isCorrect ? "إجابة صحيحة!" : "إجابة خاطئة" };
 }

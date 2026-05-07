@@ -24,8 +24,8 @@ export default function JoinPage() {
   const handleJoin = async () => {
     const code = roomCode.trim();
     const name = playerName.trim();
-    if (!code || code.length !== 6) { showToast.error("Invalid file format."); return; }
-    if (!name) { showToast.error("Please enter a player name."); return; }
+    if (!code || code.length !== 6) { showToast.error("تنسيق الملف غير صالح."); return; }
+    if (!name) { showToast.error("يرجى إدخال الاسم."); return; }
     if (!isFirebaseConfigured()) { showToast.error("تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا. راجع ملف التعليمات أو تواصل مع المسؤول"); return; }
     setLoading(true);
     try {
@@ -144,7 +144,7 @@ export default function JoinPage() {
             onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.transform="translateY(-2px)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform="translateY(0)"; }}
           >
-            {loading ? "Joining..." : "Student Join"}
+            {loading ? "جارٍ الانضمام..." : "انضمام الطالب"}
           </button>
         </div>
 
@@ -156,8 +156,8 @@ export default function JoinPage() {
       {/* Host link */}
       <div style={{ marginTop:"2rem", textAlign:"center" }}>
         <a href="/" style={{ fontSize:"0.85rem", color:"#475569", textDecoration:"none" }}>
-          Are you the host?{" "}
-          <span style={{ color:"#f59e0b", fontWeight:700 }}>Back to Dashboard</span>
+          هل أنت المضيف؟{" "}
+          <span style={{ color:"#f59e0b", fontWeight:700 }}>العودة إلى لوحة التحكم</span>
         </a>
       </div>
     </div>

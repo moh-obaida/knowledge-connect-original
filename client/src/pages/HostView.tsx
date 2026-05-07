@@ -497,7 +497,7 @@ export default function HostView() {
     }
     await push({ activeQuestion:null, selectedCellId:"", questionStatus:"skipped", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
     setHostAnswer("");
-    setHostAnswerFeedback("Question skipped");
+    setHostAnswerFeedback("تم تخطي السؤال");
     setAnswerActionBusy(false);
   };
   const verifyHostAnswer = async () => {
@@ -513,14 +513,14 @@ export default function HostView() {
       letter: room.activeQuestion.cellLabel,
     });
     const ua = String(hostAnswer || "").trim();
-    if (!ua) { showToast.warning("Correct answer is required."); return; }
+    if (!ua) { showToast.warning("الإجابة الصحيحة مطلوبة."); return; }
     const r = checkAnswer(q, ua);
     setHostAnswerFeedback(r.feedback);
     if (r.isCorrect) {
-      showToast.success("Correct!");
+      showToast.success("إجابة صحيحة!");
       markCorrect();
     } else {
-      showToast.error("Wrong answer");
+      showToast.error("إجابة خاطئة");
       await markWrong();
     }
   };
