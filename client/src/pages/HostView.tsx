@@ -283,6 +283,7 @@ export default function HostView() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [templateLevel, setTemplateLevel] = useState("");
+  const [presentationMode, setPresentationMode] = useState(false);
   const hostProfile = (() => {
     try { return JSON.parse(localStorage.getItem("kc_host_profile") || "{}"); }
     catch { return {}; }
@@ -853,7 +854,7 @@ export default function HostView() {
                 <div key={i} style={{ fontSize:"0.86rem", color:"#f0ede8" }}>• {q}</div>
               ))}
             </div>
-            <button className="btn-secondary" onClick={()=>setPreviewTemplate(null)}>إغلاق المعاينة</button>
+            <button className="btn-secondary" onClick={()=>setPreviewTemplate(null)}>رجوع</button>
           </div>
         </div>
       )}
@@ -1017,11 +1018,10 @@ export default function HostView() {
             </div>
 
             <div className="kc-card" style={{ gridColumn:"1 / -1" }}>
-              <div className="section-title">قوالب المجتمع</div>
+              <div className="section-title">قوالب الألعاب</div>
               <div style={{ fontSize:"0.82rem", color:"#94a3b8", marginBottom:"0.8rem" }}>
-                احفظ بنك الأسئلة الحالي كقالب، أو استخدم قالبًا جاهزًا/محفوظًا.
-                <div style={{ marginTop:"0.35rem" }}>يمكنك تعديل القالب في Excel ثم استيراده مرة أخرى.</div>
-                <div>يمكنك مشاركة القوالب مع الآخرين عن طريق تصديرها كجدول Excel.</div>
+                قوالب تجريبية محلية للاستخدام السريع داخل وصلة المعرفة.
+                <div style={{ marginTop:"0.35rem" }}>نماذج جاهزة مستوحاة من المجتمع — بدون أي نشر أو مشاركة عبر الإنترنت.</div>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
                 <input className="kc-input" style={{ maxWidth:240 }} placeholder="اسم القالب" value={templateName} onChange={e=>setTemplateName(e.target.value)} />
@@ -1030,12 +1030,12 @@ export default function HostView() {
                 <button className="btn-secondary" onClick={importTemplateCsv}>استيراد من جدول</button>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
-                <input className="kc-input" style={{ maxWidth:240 }} placeholder="ابحث عن قالب..." value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
+                <input className="kc-input" style={{ maxWidth:240 }} placeholder="بحث عن قالب" value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
                 <select className="kc-input" style={{ maxWidth:180 }} value={templateCategory} onChange={e=>setTemplateCategory(e.target.value)}>
-                  <option value="">التصنيف</option><option value="إسلاميات">إسلاميات</option><option value="لغة عربية">لغة عربية</option><option value="رياضيات">رياضيات</option><option value="معرفة عامة">معرفة عامة</option><option value="مفردات">مفردات</option><option value="قراءة وفهم">قراءة وفهم</option><option value="تقنية">تقنية</option><option value="حياة يومية">حياة يومية</option><option value="غير مصنف">غير مصنف</option>
+                  <option value="">كل التصنيفات</option><option value="إسلاميات">إسلاميات</option><option value="لغة عربية">لغة عربية</option><option value="رياضيات">رياضيات</option><option value="معرفة عامة">معرفة عامة</option><option value="مفردات">مفردات</option><option value="قراءة وفهم">قراءة وفهم</option><option value="تقنية">تقنية</option><option value="حياة يومية">حياة يومية</option><option value="غير مصنف">غير مصنف</option>
                 </select>
                 <select className="kc-input" style={{ maxWidth:160 }} value={templateLevel} onChange={e=>setTemplateLevel(e.target.value)}>
-                  <option value="">المستوى</option><option value="سهل">سهل</option><option value="متوسط">متوسط</option><option value="صعب">صعب</option>
+                  <option value="">كل المستويات</option><option value="سهل">سهل</option><option value="متوسط">متوسط</option><option value="صعب">صعب</option>
                 </select>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
@@ -1057,8 +1057,8 @@ export default function HostView() {
                     </div>
                     <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button>
-                      <button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={()=>useTemplate(tpl)}>استخدام القالب</button>
-                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>duplicateTemplate(tpl)}>نسخ القالب</button>
+                      <button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={()=>useTemplate(tpl)}>استخدم القالب</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>duplicateTemplate(tpl)}>تعديل نسخة</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplate(tpl)}>تصدير القالب</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplateCsv(tpl)}>تصدير كجدول</button>
                       {tpl.userCreated && <button className="btn-danger" style={{ fontSize:"0.75rem" }} onClick={()=>deleteTemplate(tpl)}>حذف القالب</button>}
@@ -1072,9 +1072,9 @@ export default function HostView() {
 
         {/* ══ TAB: Game ══ */}
         {activeTab==="game" && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1.4fr", gap:"1.25rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns: presentationMode ? "1fr" : "1fr 1.4fr", gap:"1.25rem" }}>
             {/* Left: controls */}
-            <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+            {!presentationMode && <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
               {/* Teams */}
               <div className="kc-card">
                 <div className="section-title">الفرق</div>
@@ -1196,11 +1196,14 @@ export default function HostView() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
             {/* Right: Board */}
             <div className="kc-card">
-              <div className="section-title">لوحة اللعب</div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:"0.5rem", flexWrap:"wrap" }}>
+                <div className="section-title">{presentationMode ? "وضع العرض" : "وضع الاستضافة"}</div>
+                <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>setPresentationMode(v=>!v)}>{presentationMode ? "الخروج من وضع العرض" : "وضع العرض"}</button>
+              </div>
               <div style={{ fontSize:"0.78rem", color:"#64748b", marginBottom:"0.5rem" }}>اضغط على حرف لتحميل سؤاله</div>
               {/* Path goal legend */}
               <div style={{ display:"flex", gap:"1rem", marginBottom:"0.75rem", flexWrap:"wrap" }}>
