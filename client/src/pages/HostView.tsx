@@ -282,9 +282,27 @@ export default function HostView() {
     className?: string;
     state: RoomState;
   };
+  type GameResult = {
+    id: string;
+    gameTitle: string;
+    at: string;
+    hostName: string;
+    className?: string;
+    winner: string;
+    blueTeamName: string;
+    redTeamName: string;
+    blueClaimed: number;
+    redClaimed: number;
+    totalClaimed: number;
+    skippedQuestions: number;
+    totalQuestionsUsed: number;
+    durationSec: number;
+    sourceGameId?: string;
+  };
   const PROFILE_KEY = "kc_local_profile";
   const SESSION_KEY = "kc_local_session";
   const GAMES_KEY = "kc_saved_games";
+  const RESULTS_KEY = "kc_results_history";
   const [room, setRoom] = useState<RoomState | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [creating, setCreating] = useState(false);
@@ -305,6 +323,10 @@ export default function HostView() {
   const [searchGame, setSearchGame] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterSource, setFilterSource] = useState("");
+  const [results, setResults] = useState<GameResult[]>([]);
+  const [selectedResult, setSelectedResult] = useState<GameResult | null>(null);
+  const startedAtRef = useRef<number>(0);
+  const savedResultForRoundRef = useRef<string>("");
   const [presentationMode, setPresentationMode] = useState(false);
   const [skippedCount, setSkippedCount] = useState(0);
   const unsubRef = useRef<(()=>void)|null>(null);
@@ -339,8 +361,14 @@ export default function HostView() {
         setSavedGames(migrated);
       }
     }
+    const rr = localStorage.getItem(RESULTS_KEY);
+    if (rr) {
+      const parsed = JSON.parse(rr);
+      if (Array.isArray(parsed)) setResults(parsed);
+    }
   }, []);
   const persistGames = (next: SavedGame[]) => { setSavedGames(next); localStorage.setItem(GAMES_KEY, JSON.stringify(next)); };
+  const persistResults = (next: GameResult[]) => { setResults(next); localStorage.setItem(RESULTS_KEY, JSON.stringify(next)); };
   useEffect(() => {
     try {
       const raw = localStorage.getItem(COMMUNITY_TEMPLATES_KEY);
@@ -533,6 +561,33 @@ export default function HostView() {
     const msg = t==="draw" ? "🤝 تعادل!" : t===1 ? `🏆 ${room.team1.name} فاز!` : `🏆 ${room.team2.name} فاز!`;
     push({ winnerMessage:msg, winnerTeam: t==="draw" ? 0 : t, gameStatus:"finished" });
   };
+  const saveResultRecord = (winnerText: string) => {
+    if (!room || !winnerText) return;
+    const roundKey = `${room.roomCode}-${room.roundNumber}-${winnerText}`;
+    if (savedResultForRoundRef.current === roundKey) return;
+    const blueClaimed = room.board.filter(c=>c.claimedBy===1).length;
+    const redClaimed = room.board.filter(c=>c.claimedBy===2).length;
+    const totalQuestionsUsed = room.board.filter(c=>c.used).length;
+    const durationSec = startedAtRef.current ? Math.max(0, Math.floor((Date.now()-startedAtRef.current)/1000)) : 0;
+    const rec: GameResult = {
+      id:`r_${Date.now()}`,
+      gameTitle: room.gameTitle || "لعبة",
+      at: new Date().toISOString(),
+      hostName: profile.hostName,
+      className: profile.className || "",
+      winner: winnerText,
+      blueTeamName: room.team1.name,
+      redTeamName: room.team2.name,
+      blueClaimed,
+      redClaimed,
+      totalClaimed: blueClaimed + redClaimed,
+      skippedQuestions: skippedCount,
+      totalQuestionsUsed,
+      durationSec,
+    };
+    persistResults([rec, ...results].slice(0, 200));
+    savedResultForRoundRef.current = roundKey;
+  };
 
   const startGame = async () => {
     if (!room) return;
@@ -543,9 +598,10 @@ export default function HostView() {
     }
     if (empty>0) {
       confirm(`بعض الحروف لا تحتوي على أسئلة (${empty} حرف). هل تريد المتابعة؟`,
-        async () => { await push({ gameStatus:"active" }); setActiveTab("game"); });
+        async () => { await push({ gameStatus:"active" }); startedAtRef.current = Date.now(); setActiveTab("game"); });
     } else {
       await push({ gameStatus:"active" });
+      startedAtRef.current = Date.now();
       showToast.success("بدأت اللعبة! 🎮");
       setActiveTab("game");
     }
@@ -560,6 +616,7 @@ export default function HostView() {
         timerRunning:false, timerValue:room.timerSetting, winnerMessage:"", winnerTeam:0,
         questionStatus:"idle", gameStatus:"lobby", activeTeam:1, roundNumber:1 });
       setSkippedCount(0);
+      savedResultForRoundRef.current = "";
       showToast.success("تم إعادة ضبط اللعبة");
     });
   };
@@ -884,8 +941,13 @@ export default function HostView() {
   const endGameNow = async () => {
     if (!room) return;
     await push({ gameStatus:"finished", winnerMessage:"تم إنهاء اللعبة من المضيف", winnerTeam:0, timerRunning:false });
+    saveResultRecord("تم إنهاء اللعبة من المضيف");
     showToast.info("تم إنهاء اللعبة.");
   };
+  useEffect(() => {
+    if (!room?.winnerMessage) return;
+    saveResultRecord(room.winnerMessage);
+  }, [room?.winnerMessage]);
 
   if (!isLogged) {
     return (
@@ -927,11 +989,73 @@ export default function HostView() {
             <div className="kc-card"><div className="section-title">مرحباً بك</div><div style={{color:"#f0ede8",fontWeight:700}}>مرحباً {profile.hostName}</div>{profile.className && <div style={{color:"#94a3b8"}}>الصف/الفعالية: {profile.className}</div>}{profile.orgName && <div style={{color:"#94a3b8"}}>الجهة: {profile.orgName}</div>}</div>
             <div className="kc-card"><div className="section-title">إجراءات سريعة</div><div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}><button className="btn-gold" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setAppView("templates")}>عرض القوالب</button><button className="btn-secondary" onClick={()=>setAppView("games")}>ألعابي</button><button className="btn-secondary" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>بدء الاستضافة</button><button className="btn-secondary" onClick={importSavedGame}>استيراد لعبة</button></div></div>
             <div className="kc-card"><div className="section-title">ألعابي</div><div style={{color:"#94a3b8"}}>عدد الألعاب المحفوظة: {savedGames.length}</div>{latest ? <div style={{fontSize:"0.85rem",color:"#f0ede8",marginTop:"0.4rem"}}>آخر لعبة: {latest.title}</div> : <div style={{color:"#94a3b8"}}>لا توجد ألعاب محفوظة بعد.</div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("games")}>عرض كل الألعاب</button></div>
-            <div className="kc-card"><div className="section-title">آخر النتائج</div><div style={{color:"#94a3b8"}}>لا توجد نتائج محفوظة بعد.</div></div>
+            <div className="kc-card"><div className="section-title">آخر النتائج</div>{results.length ? <div style={{display:"grid",gap:"0.35rem"}}>{results.slice(0,3).map(r=><div key={r.id} style={{fontSize:"0.8rem",color:"#cbd5e1"}}>{r.gameTitle} • {r.winner} • {new Date(r.at).toLocaleDateString("ar")}</div>)}</div> : <div style={{color:"#94a3b8"}}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("results")}>عرض كل النتائج</button></div>
           </div>
         )}
         {appView === "templates" && <div className="kc-card"><div className="section-title">قوالب الألعاب</div><div style={{color:"#94a3b8"}}>انتقل إلى وضع الاستضافة ثم افتح تبويب الإعداد لاستخدام القوالب.</div><button className="btn-gold" style={{marginTop:"0.75rem"}} onClick={()=>{ setAppView("host"); if(!room) handleCreate(); setActiveTab("setup"); }}>فتح القوالب</button></div>}
-        {appView === "results" && <div className="kc-card"><div className="section-title">آخر النتائج</div><div style={{color:"#94a3b8"}}>{savedGames.length ? "ستظهر النتائج من الألعاب المحفوظة محلياً." : "لا توجد نتائج بعد."}</div></div>}
+        {appView === "results" && (
+          <div className="kc-card">
+            <div className="section-title">سجل النتائج</div>
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  const blob = new Blob([JSON.stringify(results, null, 2)], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "results-history.json";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                تصدير كل النتائج
+              </button>
+            </div>
+            {!results.length ? (
+              <div style={{ color:"#94a3b8" }}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div>
+            ) : (
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:"0.5rem" }}>
+                {results.map((r) => (
+                  <div key={r.id} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"12px", padding:"0.75rem" }}>
+                    <div style={{ fontWeight:800, color:"#f0ede8" }}>{r.gameTitle}</div>
+                    <div style={{ fontSize:"0.78rem", color:"#94a3b8" }}>الفائز: {r.winner}</div>
+                    <div style={{ fontSize:"0.78rem", color:"#94a3b8" }}>التاريخ: {new Date(r.at).toLocaleString("ar")}</div>
+                    <div style={{ fontSize:"0.78rem", color:"#94a3b8" }}>
+                      {r.blueTeamName}: {r.blueClaimed} • {r.redTeamName}: {r.redClaimed}
+                    </div>
+                    <div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap", marginTop:"0.55rem" }}>
+                      <button className="btn-secondary" onClick={() => setSelectedResult(r)}>عرض التفاصيل</button>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => {
+                          const blob = new Blob([JSON.stringify(r, null, 2)], { type: "application/json" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `result-${r.id}.json`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        تصدير النتيجة
+                      </button>
+                      <button
+                        className="btn-danger"
+                        onClick={() => {
+                          if (!window.confirm("هل أنت متأكد من حذف هذه النتيجة؟")) return;
+                          persistResults(results.filter((x) => x.id !== r.id));
+                        }}
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {appView === "games" && <div className="kc-card"><div className="section-title">ألعابي</div><div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap",marginBottom:"0.75rem"}}><input className="kc-input" style={{maxWidth:240}} placeholder="بحث عن لعبة" value={searchGame} onChange={e=>setSearchGame(e.target.value)} /><select className="kc-input" style={{maxWidth:180}} value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}><option value="">كل التصنيفات</option>{categoryOptions.map(c=><option key={c} value={c}>{c}</option>)}</select><select className="kc-input" style={{maxWidth:160}} value={filterSource} onChange={e=>setFilterSource(e.target.value)}><option value="">كل الأنواع</option><option value="custom">مخصص</option><option value="template">قالب</option><option value="imported">مستورد</option></select><button className="btn-secondary" onClick={importSavedGame}>استيراد لعبة</button></div>{!filtered.length ? <div style={{color:"#94a3b8"}}>لا توجد ألعاب محفوظة بعد. أنشئ لعبة جديدة أو استخدم أحد القوالب.<div style={{marginTop:"0.6rem",display:"flex",gap:"0.4rem",flexWrap:"wrap"}}><button className="btn-gold" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setAppView("templates")}>عرض القوالب</button><button className="btn-secondary" onClick={importSavedGame}>استيراد لعبة</button></div></div> : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:"0.5rem"}}>{filtered.map(g=><div key={g.id} style={{background:"#141e2d",border:"1px solid #1a2332",borderRadius:"12px",padding:"0.75rem"}}><div style={{fontWeight:800,color:"#f0ede8"}}>{g.title}</div><div style={{fontSize:"0.78rem",color:"#94a3b8"}}>التصنيف: {g.category} • عدد الأسئلة: {g.questionCount}</div><div style={{fontSize:"0.78rem",color:"#94a3b8"}}>آخر تعديل: {new Date(g.updatedAt).toLocaleDateString("ar")} • النوع: {sourceLabel(g.source)}</div><div style={{display:"flex",gap:"0.35rem",flexWrap:"wrap",marginTop:"0.5rem"}}><button className="btn-gold" onClick={()=>loadSavedGame(g)}>تشغيل</button><button className="btn-secondary" onClick={()=>loadSavedGame(g)}>تعديل</button><button className="btn-secondary" onClick={()=>duplicateSavedGame(g)}>نسخ</button><button className="btn-secondary" onClick={()=>exportSavedGame(g)}>تصدير</button><button className="btn-danger" onClick={()=>deleteSavedGame(g.id)}>حذف</button></div></div>)}</div>}</div>}
       </div>
     );
@@ -1014,6 +1138,26 @@ export default function HostView() {
               ))}
             </div>
             <button className="btn-secondary" onClick={()=>setPreviewTemplate(null)}>إغلاق المعاينة</button>
+          </div>
+        </div>
+      )}
+      {selectedResult && (
+        <div className="modal-overlay" onClick={()=>setSelectedResult(null)}>
+          <div className="modal-box modal-box-scroll" style={{ maxWidth: 560 }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontWeight:900, color:"#f59e0b", marginBottom:"0.6rem" }}>تفاصيل النتيجة</div>
+            <div style={{ display:"grid", gap:"0.35rem", color:"#cbd5e1", fontSize:"0.9rem" }}>
+              <div><strong>الفائز:</strong> {selectedResult.winner}</div>
+              <div><strong>عنوان اللعبة:</strong> {selectedResult.gameTitle}</div>
+              <div><strong>تاريخ اللعبة:</strong> {new Date(selectedResult.at).toLocaleString("ar")}</div>
+              <div><strong>المضيف:</strong> {selectedResult.hostName || "-"}</div>
+              <div><strong>الصف أو الفعالية:</strong> {selectedResult.className || "-"}</div>
+              <div><strong>عدد خلايا الفريق الأزرق:</strong> {selectedResult.blueClaimed}</div>
+              <div><strong>عدد خلايا الفريق الأحمر:</strong> {selectedResult.redClaimed}</div>
+              <div><strong>الأسئلة المستخدمة:</strong> {selectedResult.totalQuestionsUsed}</div>
+              <div><strong>الأسئلة المتخطاة:</strong> {selectedResult.skippedQuestions}</div>
+              <div><strong>مدة اللعبة:</strong> {selectedResult.durationSec} ثانية</div>
+            </div>
+            <button className="btn-secondary" style={{ marginTop:"0.8rem" }} onClick={()=>setSelectedResult(null)}>إغلاق</button>
           </div>
         </div>
       )}
