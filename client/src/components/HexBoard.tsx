@@ -30,7 +30,7 @@ export default function HexBoard({
   const rowOffset = cellSize * 0.5;
 
   return (
-    <div style={{ position: "relative", padding: "8px" }}>
+    <div style={{ position: "relative", padding: "8px", width: "100%", overflowX: "auto" }}>
       {/* Path goal edge strips — only in game/participant mode */}
       {mode !== "setup" && (
         <>
@@ -42,7 +42,7 @@ export default function HexBoard({
       )}
 
       {/* Connected honeycomb grid */}
-      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "100%", overflowX: "hidden", padding: "8px 6px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "max-content", minWidth: "100%", margin: "0 auto", padding: "8px 6px" }}>
         {rows.map((rowCells, row) => (
           <div key={`row-${row}`} style={{ display: "grid", gridTemplateColumns: `repeat(${safeGrid}, ${cellSize}px)`, columnGap: `${-cellSize * 0.04}px`, marginInlineStart: row % 2 === 1 ? `${rowOffset}px` : 0 }}>
             {rowCells.map((cell) => {
@@ -109,6 +109,8 @@ export default function HexBoard({
                 outlineOffset: "-3px",
                 animation: isSelected ? "hexGlow 1.5s ease-in-out infinite" : "none",
                 userSelect: "none",
+                minWidth: 44,
+                minHeight: 44,
               }}
               onMouseEnter={e => { if (clickable) (e.currentTarget as HTMLDivElement).style.transform = "scale(1.1)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1)"; }}

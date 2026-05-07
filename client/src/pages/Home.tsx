@@ -28,14 +28,14 @@ export default function Home() {
   return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.25rem", fontSize:`${textScale}rem`, background:bgByMode[appearanceMode] || bgByMode.dark }}>
       <div style={{ width:"100%", maxWidth:1040 }}>
-        <div style={{ background:"#0f1623", border:"1.5px solid #1a2332", borderRadius:24, padding:"1.4rem", display:"grid", gridTemplateColumns:"1.25fr 1fr", gap:"1rem" }}>
+        <div style={{ background:"#0f1623", border:"1.5px solid #1a2332", borderRadius:24, padding:"1.25rem", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:"1rem" }}>
           <div style={{ textAlign:"center", marginBottom:"1rem" }}>
-            <div style={{ fontSize:"2.2rem", color:accentByTheme[visualTheme] || "#f59e0b", fontWeight:900 }}>وصلة المعرفة</div>
+            <div style={{ fontSize:"2.4rem", color:accentByTheme[visualTheme] || "#f59e0b", fontWeight:900 }}>وصلة المعرفة</div>
             <div style={{ color:"#94a3b8", fontWeight:700, marginTop:"0.25rem" }}>Turn revision into a fun challenge</div>
             <div style={{ color:"#64748b", marginTop:"0.25rem" }}>Interactive learning challenge platform for hosts and teachers</div>
             <div style={{ color:"#64748b", fontSize:"0.9rem", marginTop:"0.2rem" }}>Create, host, and play in classroom-friendly formats</div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:"0.45rem", marginTop:"0.9rem", textAlign:"right" }}>
-              {["قوالب جاهزة","لوحة تحكم للمضيف","وضع عرض للفصل","نتائج محفوظة محلياً","ألعاب قابلة للتخصيص","تحديات فرق ممتعة"].map(x=>(
+              {["قوالب جاهزة","لوحة تحكم للمضيف","وضع عرض للفصل"].map(x=>(
                 <div key={x} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.45rem 0.6rem", color:"#cbd5e1", fontSize:"0.82rem" }}>{x}</div>
               ))}
             </div>
