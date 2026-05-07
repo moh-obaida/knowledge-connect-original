@@ -418,13 +418,13 @@ export default function HostView() {
     return "#090d18";
   };
   const appearanceBg = getAppearanceBg(appearance);
-    : appearance === "soft"
-    : appearance === "contrast"
-    ? `radial-gradient(circle at top, #ffffff22 0%, #000 62%)`
-    try {
-      const raw = localStorage.getItem(COMMUNITY_TEMPLATES_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
+  const getPageGradient = (mode: "light" | "soft" | "contrast" | "dark") => {
+    if (mode === "light") return `radial-gradient(circle at top, ${themeAccent[themeName]}22 0%, #f8fafc 55%)`;
+    if (mode === "soft") return `radial-gradient(circle at top, ${themeAccent[themeName]}33 0%, #141b2d 60%)`;
+    if (mode === "contrast") return `radial-gradient(circle at top, #ffffff22 0%, #000 62%)`;
+    return `radial-gradient(circle at top, ${themeAccent[themeName]}33 0%, #090d18 60%)`;
+  };
+  const pageGradient = getPageGradient(appearance);
       if (Array.isArray(parsed)) setCommunityTemplates(parsed);
     } catch {
       showToast.warning("تعذر قراءة قوالب المجتمع المحفوظة.");
