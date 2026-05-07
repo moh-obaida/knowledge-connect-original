@@ -337,11 +337,22 @@ export default function HostView() {
   const [timerCustom, setTimerCustom] = useState(45);
   const [winningPathIds, setWinningPathIds] = useState<string[]>([]);
   const [appearance, setAppearance] = useState<"dark"|"light"|"mid">("dark");
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
 
   useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => {
+    const ap = localStorage.getItem("kc_appearance");
+    if (ap === "light" || ap === "mid" || ap === "dark") setAppearance(ap);
+  }, []);
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", appearance);
+      localStorage.setItem("kc_appearance", appearance);
+    }
+  }, [appearance]);
   useEffect(() => {
     const p = localStorage.getItem(PROFILE_KEY);
     const s = localStorage.getItem(SESSION_KEY);
@@ -1024,17 +1035,22 @@ export default function HostView() {
         <div className="kc-card" style={{ marginBottom:"1rem" }}>
           <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem" }}>
             <div><div style={{ fontSize:"1.4rem", fontWeight:900, color:"#f59e0b" }}>وصلة المعرفة • لوحة التحكم</div><div style={{ color:"#94a3b8" }}>مرحباً، {profile.hostName}{profile.className ? ` • الصف/الفعالية: ${profile.className}` : ""}{profile.orgName ? ` • الجهة: ${profile.orgName}` : ""}</div></div>
-            <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", alignItems:"center" }}>
-              <button className="btn-secondary" onClick={()=>{ setAppearance("light"); localStorage.setItem("kc_appearance","light"); }}>فاتح</button>
-              <button className="btn-secondary" onClick={()=>{ setAppearance("mid"); localStorage.setItem("kc_appearance","mid"); }}>متوازن</button>
-              <button className="btn-secondary" onClick={()=>{ setAppearance("dark"); localStorage.setItem("kc_appearance","dark"); }}>داكن</button>
-              <button className="btn-secondary" onClick={()=>setAppView("dashboard")}>الرئيسية</button>
-              <button className="btn-secondary" onClick={()=>setAppView("games")}>ألعابي</button>
-              <button className="btn-secondary" onClick={()=>setAppView("templates")}>القوالب</button>
-              <button className="btn-secondary" onClick={()=>setAppView("results")}>النتائج</button>
-              <button className="btn-secondary" onClick={()=>setAppView("settings")}>الإعدادات</button>
+            <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", alignItems:"center", position:"relative" }}>
+              <button className={`tab-btn ${appView==="dashboard"?"active":""}`} onClick={()=>setAppView("dashboard")}>الرئيسية</button>
+              <button className={`tab-btn ${appView==="games"?"active":""}`} onClick={()=>setAppView("games")}>ألعابي</button>
+              <button className={`tab-btn ${appView==="templates"?"active":""}`} onClick={()=>setAppView("templates")}>القوالب</button>
+              <button className={`tab-btn ${appView==="results"?"active":""}`} onClick={()=>setAppView("results")}>النتائج</button>
+              <button className={`tab-btn ${appView==="settings"?"active":""}`} onClick={()=>setAppView("settings")}>الإعدادات</button>
               <button className="btn-gold" onClick={()=>{ setAppView("host"); if(!room) handleCreate(); }}>بدء الاستضافة</button>
               <button className="btn-danger" onClick={()=>{ localStorage.removeItem(SESSION_KEY); setIsLogged(false); }}>الخروج</button>
+              <button className="btn-secondary" aria-label="تغيير المظهر" onClick={()=>setThemeMenuOpen(v=>!v)}>{appearance==="light"?"☀️":appearance==="mid"?"◐":"🌙"}</button>
+              {themeMenuOpen && (
+                <div className="kc-card" style={{ position:"absolute", top:"2.6rem", insetInlineStart:0, zIndex:20, padding:"0.5rem", minWidth:140 }}>
+                  <button className="btn-secondary" style={{ width:"100%", marginBottom:"0.25rem" }} onClick={()=>{ setAppearance("light"); setThemeMenuOpen(false); }}>فاتح</button>
+                  <button className="btn-secondary" style={{ width:"100%", marginBottom:"0.25rem" }} onClick={()=>{ setAppearance("mid"); setThemeMenuOpen(false); }}>متوازن</button>
+                  <button className="btn-secondary" style={{ width:"100%" }} onClick={()=>{ setAppearance("dark"); setThemeMenuOpen(false); }}>داكن</button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -50,6 +50,43 @@
   --border: #1a2332;
   --input: #141e2d;
   --ring: #f59e0b;
+  --bg-page: #090d18;
+  --bg-top: #111a2b;
+  --surface-soft: #141e2d;
+}
+
+html[data-theme="light"] {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --secondary: #eef2f7;
+  --secondary-foreground: #334155;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #dbe2ea;
+  --input: #ffffff;
+  --ring: #d97706;
+  --bg-page: #f8fafc;
+  --bg-top: #fff2db;
+  --surface-soft: #f1f5f9;
+}
+
+html[data-theme="mid"] {
+  --background: #141b2d;
+  --foreground: #e2e8f0;
+  --card: #1a2335;
+  --card-foreground: #e2e8f0;
+  --secondary: #223047;
+  --secondary-foreground: #cbd5e1;
+  --muted: #1a2438;
+  --muted-foreground: #94a3b8;
+  --border: #2a3448;
+  --input: #1a2438;
+  --ring: #f59e0b;
+  --bg-page: #141b2d;
+  --bg-top: #25314a;
+  --surface-soft: #1a2438;
 }
 
 @layer base {
@@ -62,7 +99,7 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    background: radial-gradient(circle at top, #111a2b 0%, var(--background) 45%);
+    background: radial-gradient(circle at top, var(--bg-top) 0%, var(--bg-page) 45%);
     color: var(--foreground);
     font-family: 'Cairo', sans-serif;
     direction: rtl;
@@ -102,11 +139,11 @@
   /* ── Shared input style ── */
   .kc-input {
     width: 100%;
-    background: #141e2d;
-    border: 1.5px solid #1a2332;
+    background: var(--input);
+    border: 1.5px solid var(--border);
     border-radius: 10px;
     padding: 0.55rem 0.85rem;
-    color: #f0ede8;
+    color: var(--foreground);
     font-family: 'Cairo', sans-serif;
     font-size: 0.9rem;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -117,7 +154,7 @@
     border-color: #f59e0b;
     box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
   }
-  .kc-input::placeholder { color: #3d5068; }
+  .kc-input::placeholder { color: var(--muted-foreground); }
 
   /* ── Gold button ── */
   .btn-gold {
@@ -141,18 +178,18 @@
 
   /* ── Secondary button ── */
   .btn-secondary {
-    background: #1a2332;
-    color: #cbd5e1;
+    background: var(--secondary);
+    color: var(--secondary-foreground);
     font-weight: 600;
     border-radius: 10px;
     padding: 0.55rem 1.2rem;
-    border: 1.5px solid #253347;
+    border: 1.5px solid var(--border);
     font-family: 'Cairo', sans-serif;
     font-size: 0.9rem;
     transition: all 0.12s ease;
     white-space: nowrap;
   }
-  .btn-secondary:hover:not(:disabled) { background: #253347; color: #f0ede8; }
+  .btn-secondary:hover:not(:disabled) { filter: brightness(1.08); color: var(--foreground); }
   .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ── Danger button ── */
@@ -189,8 +226,8 @@
 
   /* ── Card ── */
   .kc-card {
-    background: #0f1623;
-    border: 1.5px solid #1a2332;
+    background: var(--card);
+    border: 1.5px solid var(--border);
     border-radius: 16px;
     padding: 1.25rem;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
