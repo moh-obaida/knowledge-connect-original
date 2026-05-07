@@ -329,6 +329,7 @@ export default function HostView() {
   const savedResultForRoundRef = useRef<string>("");
   const [presentationMode, setPresentationMode] = useState(false);
   const [skippedCount, setSkippedCount] = useState(0);
+  const [timerCustom, setTimerCustom] = useState(45);
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -414,6 +415,12 @@ export default function HostView() {
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [room?.timerRunning]);
+  useEffect(() => {
+    if (!room?.activeQuestion) return;
+    if (room.timerSetting > 0 && !room.timerRunning) {
+      push({ timerValue: room.timerSetting, timerRunning: true, timerMax: room.timerSetting });
+    }
+  }, [room?.activeQuestion?.cellId]);
 
   const confirm = (msg: string, action: ()=>void) => { setConfirmMsg(msg); setConfirmAction(()=>action); };
   const push = useCallback(async (updates: Partial<RoomState>) => {
@@ -987,9 +994,9 @@ export default function HostView() {
         {appView === "dashboard" && (
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
             <div className="kc-card"><div className="section-title">مرحباً بك</div><div style={{color:"#f0ede8",fontWeight:700}}>مرحباً {profile.hostName}</div>{profile.className && <div style={{color:"#94a3b8"}}>الصف/الفعالية: {profile.className}</div>}{profile.orgName && <div style={{color:"#94a3b8"}}>الجهة: {profile.orgName}</div>}</div>
-            <div className="kc-card"><div className="section-title">إجراءات سريعة</div><div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}><button className="btn-gold" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setAppView("templates")}>عرض القوالب</button><button className="btn-secondary" onClick={()=>setAppView("games")}>ألعابي</button><button className="btn-secondary" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>بدء الاستضافة</button><button className="btn-secondary" onClick={importSavedGame}>استيراد لعبة</button></div></div>
+            <div className="kc-card"><div className="section-title">إجراءات سريعة</div><div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}><button className="btn-gold" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setAppView("templates")}>عرض القوالب</button><button className="btn-secondary" onClick={()=>setAppView("games")}>ألعابي</button><button className="btn-secondary" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>بدء الاستضافة</button><button className="btn-secondary" onClick={importSavedGame}>استيراد لعبة</button>{savedGames[0] && <button className="btn-secondary" onClick={()=>loadSavedGame(savedGames[0])}>متابعة آخر لعبة</button>}</div></div>
             <div className="kc-card"><div className="section-title">ألعابي</div><div style={{color:"#94a3b8"}}>عدد الألعاب المحفوظة: {savedGames.length}</div>{latest ? <div style={{fontSize:"0.85rem",color:"#f0ede8",marginTop:"0.4rem"}}>آخر لعبة: {latest.title}</div> : <div style={{color:"#94a3b8"}}>لا توجد ألعاب محفوظة بعد.</div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("games")}>عرض كل الألعاب</button></div>
-            <div className="kc-card"><div className="section-title">آخر النتائج</div>{results.length ? <div style={{display:"grid",gap:"0.35rem"}}>{results.slice(0,3).map(r=><div key={r.id} style={{fontSize:"0.8rem",color:"#cbd5e1"}}>{r.gameTitle} • {r.winner} • {new Date(r.at).toLocaleDateString("ar")}</div>)}</div> : <div style={{color:"#94a3b8"}}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("results")}>عرض كل النتائج</button></div>
+            <div className="kc-card"><div className="section-title">آخر النتائج</div><div style={{fontSize:"0.78rem",color:"#94a3b8",marginBottom:"0.4rem"}}>عدد النتائج: {results.length} • القوالب: {STARTER_TEMPLATES.length + DEMO_COMMUNITY_TEMPLATES.length + communityTemplates.length}</div>{results.length ? <div style={{display:"grid",gap:"0.35rem"}}>{results.slice(0,3).map(r=><div key={r.id} style={{fontSize:"0.8rem",color:"#cbd5e1"}}>{r.gameTitle} • {r.winner} • {new Date(r.at).toLocaleDateString("ar")}</div>)}</div> : <div style={{color:"#94a3b8"}}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("results")}>عرض كل النتائج</button></div>
           </div>
         )}
         {appView === "templates" && <div className="kc-card"><div className="section-title">قوالب الألعاب</div><div style={{color:"#94a3b8"}}>انتقل إلى وضع الاستضافة ثم افتح تبويب الإعداد لاستخدام القوالب.</div><button className="btn-gold" style={{marginTop:"0.75rem"}} onClick={()=>{ setAppView("host"); if(!room) handleCreate(); setActiveTab("setup"); }}>فتح القوالب</button></div>}
@@ -1447,11 +1454,23 @@ export default function HostView() {
                   </div>
                 </div>
                 <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem", flexWrap:"wrap" }}>
-                  {[15,30,45,60,90,120].map(s=>(
+                  <button className="btn-secondary" style={{ fontSize:"0.72rem", padding:"0.2rem 0.55rem" }}
+                    onClick={()=>push({ timerSetting:0, timerValue:0, timerRunning:false })}>بدون مؤقت</button>
+                  {[30,60].map(s=>(
                     <button key={s} className="btn-secondary" style={{ fontSize:"0.72rem", padding:"0.2rem 0.55rem" }}
                       onClick={()=>push({ timerSetting:s, timerValue:s, timerRunning:false })}>{s}ث</button>
                   ))}
+                  <input className="kc-input" style={{ width:90 }} type="number" min={5} value={timerCustom} onChange={e=>setTimerCustom(Number(e.target.value)||5)} />
+                  <button className="btn-secondary" style={{ fontSize:"0.72rem", padding:"0.2rem 0.55rem" }} onClick={()=>push({ timerSetting:timerCustom, timerValue:timerCustom, timerRunning:false })}>تخصيص</button>
                 </div>
+              </div>
+              <div className="kc-card">
+                <div className="section-title">إعدادات اللعبة</div>
+                <label style={{ display:"flex", alignItems:"center", gap:"0.5rem", color:"#cbd5e1" }}>
+                  <input type="checkbox" checked={room.stealMode==="steal"} onChange={e=>push({ stealMode: e.target.checked ? "steal" : "none" })} />
+                  تفعيل فرصة السرقة
+                </label>
+                <div style={{ fontSize:"0.78rem", color:"#94a3b8", marginTop:"0.35rem" }}>عند الإجابة الخاطئة: {room.stealMode==="steal" ? "فرصة للفريق الآخر" : "بدون فرصة سرقة"}</div>
               </div>
 
               {/* Current question */}
