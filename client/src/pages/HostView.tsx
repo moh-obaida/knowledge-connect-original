@@ -316,7 +316,7 @@ export default function HostView() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [templateLevel, setTemplateLevel] = useState("");
-  const [appView, setAppView] = useState<"dashboard"|"host"|"templates"|"games"|"results">("dashboard");
+  const [appView, setAppView] = useState<"dashboard"|"host"|"templates"|"games"|"results"|"settings">("dashboard");
   const [profile, setProfile] = useState<LocalProfile>({ hostName: "", className: "", orgName: "" });
   const [isLogged, setIsLogged] = useState(false);
   const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
@@ -331,6 +331,7 @@ export default function HostView() {
   const [skippedCount, setSkippedCount] = useState(0);
   const [timerCustom, setTimerCustom] = useState(45);
   const [winningPathIds, setWinningPathIds] = useState<string[]>([]);
+  const [appearance, setAppearance] = useState<"dark"|"light"|"mid">("dark");
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -363,6 +364,8 @@ export default function HostView() {
         setSavedGames(migrated);
       }
     }
+    const ap = localStorage.getItem("kc_appearance");
+    if (ap === "dark" || ap === "light" || ap === "mid") setAppearance(ap);
     const rr = localStorage.getItem(RESULTS_KEY);
     if (rr) {
       const parsed = JSON.parse(rr);
@@ -371,6 +374,7 @@ export default function HostView() {
   }, []);
   const persistGames = (next: SavedGame[]) => { setSavedGames(next); localStorage.setItem(GAMES_KEY, JSON.stringify(next)); };
   const persistResults = (next: GameResult[]) => { setResults(next); localStorage.setItem(RESULTS_KEY, JSON.stringify(next)); };
+  const appearanceBg = appearance === "light" ? "#f8fafc" : appearance === "mid" ? "#111827" : "#090d18";
   useEffect(() => {
     try {
       const raw = localStorage.getItem(COMMUNITY_TEMPLATES_KEY);
@@ -1007,15 +1011,19 @@ export default function HostView() {
     const categoryOptions = Array.from(new Set(savedGames.map(g => g.category)));
     const suggestedTemplates = [...STARTER_TEMPLATES, ...DEMO_COMMUNITY_TEMPLATES, ...communityTemplates].slice(0, 4);
     return (
-      <div className="container" style={{ paddingTop:"1.5rem", paddingBottom:"2rem" }}>
+      <div className="container" style={{ paddingTop:"1.5rem", paddingBottom:"2rem", background:appearanceBg, minHeight:"100vh" }}>
         <div className="kc-card" style={{ marginBottom:"1rem" }}>
           <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem" }}>
             <div><div style={{ fontSize:"1.4rem", fontWeight:900, color:"#f59e0b" }}>وصلة المعرفة • لوحة التحكم</div><div style={{ color:"#94a3b8" }}>مرحباً، {profile.hostName}{profile.className ? ` • الصف/الفعالية: ${profile.className}` : ""}{profile.orgName ? ` • الجهة: ${profile.orgName}` : ""}</div></div>
             <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", alignItems:"center" }}>
+              <button className="btn-secondary" onClick={()=>{ setAppearance("light"); localStorage.setItem("kc_appearance","light"); }}>فاتح</button>
+              <button className="btn-secondary" onClick={()=>{ setAppearance("mid"); localStorage.setItem("kc_appearance","mid"); }}>متوازن</button>
+              <button className="btn-secondary" onClick={()=>{ setAppearance("dark"); localStorage.setItem("kc_appearance","dark"); }}>داكن</button>
               <button className="btn-secondary" onClick={()=>setAppView("dashboard")}>الرئيسية</button>
               <button className="btn-secondary" onClick={()=>setAppView("games")}>ألعابي</button>
-              <button className="btn-secondary" onClick={()=>setAppView("templates")}>عرض القوالب</button>
+              <button className="btn-secondary" onClick={()=>setAppView("templates")}>القوالب</button>
               <button className="btn-secondary" onClick={()=>setAppView("results")}>النتائج</button>
+              <button className="btn-secondary" onClick={()=>setAppView("settings")}>الإعدادات</button>
               <button className="btn-gold" onClick={()=>{ setAppView("host"); if(!room) handleCreate(); }}>بدء الاستضافة</button>
               <button className="btn-danger" onClick={()=>{ localStorage.removeItem(SESSION_KEY); setIsLogged(false); }}>الخروج</button>
             </div>
@@ -1023,14 +1031,23 @@ export default function HostView() {
         </div>
         {appView === "dashboard" && (
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
-            <div className="kc-card"><div className="section-title">مرحباً بك</div><div style={{color:"#f0ede8",fontWeight:700}}>مرحباً {profile.hostName}</div>{profile.className && <div style={{color:"#94a3b8"}}>الصف/الفعالية: {profile.className}</div>}{profile.orgName && <div style={{color:"#94a3b8"}}>الجهة: {profile.orgName}</div>}</div>
-            <div className="kc-card"><div className="section-title">إجراءات سريعة</div><div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}><button className="btn-gold" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setAppView("templates")}>عرض القوالب</button><button className="btn-secondary" onClick={()=>setAppView("games")}>ألعابي</button><button className="btn-secondary" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>بدء الاستضافة</button><button className="btn-secondary" onClick={importSavedGame}>استيراد لعبة</button>{savedGames[0] && <button className="btn-secondary" onClick={()=>loadSavedGame(savedGames[0])}>متابعة آخر لعبة</button>}</div></div>
-            <div className="kc-card"><div className="section-title">ألعابي</div><div style={{color:"#94a3b8"}}>عدد الألعاب المحفوظة: {savedGames.length}</div>{latest ? <div style={{fontSize:"0.85rem",color:"#f0ede8",marginTop:"0.4rem"}}>آخر لعبة: {latest.title}</div> : <div style={{color:"#94a3b8"}}>لا توجد ألعاب محفوظة بعد.</div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("games")}>عرض كل الألعاب</button></div>
-            <div className="kc-card"><div className="section-title">آخر النتائج</div><div style={{fontSize:"0.78rem",color:"#94a3b8",marginBottom:"0.4rem"}}>عدد النتائج: {results.length} • القوالب: {STARTER_TEMPLATES.length + DEMO_COMMUNITY_TEMPLATES.length + communityTemplates.length}</div>{results.length ? <div style={{display:"grid",gap:"0.35rem"}}>{results.slice(0,3).map(r=><div key={r.id} style={{fontSize:"0.8rem",color:"#cbd5e1"}}>{r.gameTitle} • {r.winner} • {new Date(r.at).toLocaleDateString("ar")}</div>)}</div> : <div style={{color:"#94a3b8"}}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("results")}>عرض كل النتائج</button></div>
-            <div className="kc-card"><div className="section-title">متابعة سريعة</div>{latest ? <><div style={{color:"#f0ede8", marginBottom:"0.5rem"}}>{latest.title}</div><button className="btn-gold" onClick={()=>loadSavedGame(latest)}>متابعة اللعبة</button></> : <div style={{color:"#94a3b8"}}>اختر قالباً جاهزاً أو أنشئ لعبة جديدة للبدء.</div>}</div>
+            <div className="kc-card"><div className="section-title">مرحباً بك</div><div style={{color:"#f0ede8",fontWeight:700}}>مرحباً {profile.hostName}</div>{profile.className && <div style={{color:"#94a3b8"}}>الصف/الفعالية: {profile.className}</div>}{profile.orgName && <div style={{color:"#94a3b8"}}>الجهة: {profile.orgName}</div>}<div style={{marginTop:"0.4rem",color:"#94a3b8"}}>ابدأ تحدياً جديداً أو تابع آخر لعبة محفوظة.</div></div>
+            <div className="kc-card"><div className="section-title">إجراءات سريعة</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.45rem"}}>{[
+              {t:"إنشاء لعبة جديدة",d:"ابدأ من الصفر وأضف أسئلتك.",a:()=>{setAppView("host"); if(!room) handleCreate();}},
+              {t:"اختيار قالب",d:"استخدم قالباً جاهزاً وابدأ بسرعة.",a:()=>setAppView("templates")},
+              {t:"بدء الاستضافة",d:"شغّل لعبة واستضف التحدي.",a:()=>{setAppView("host"); if(!room) handleCreate();}},
+              {t:"ألعابي",d:"إدارة الألعاب المحفوظة.",a:()=>setAppView("games")},
+              {t:"استيراد لعبة",d:"أضف لعبة من ملف محلي.",a:importSavedGame},
+              {t:"عرض النتائج",d:"راجع نتائج التحديات السابقة.",a:()=>setAppView("results")},
+            ].map(item=><button key={item.t} className="btn-secondary" style={{textAlign:"right",whiteSpace:"normal"}} onClick={item.a}><div style={{fontWeight:700}}>{item.t}</div><div style={{fontSize:"0.7rem",color:"#94a3b8"}}>{item.d}</div></button>)}</div></div>
+            <div className="kc-card"><div className="section-title">إحصاءات</div><div className="badge-chip">الألعاب المحفوظة: {savedGames.length}</div><div className="badge-chip">القوالب المتاحة: {STARTER_TEMPLATES.length + DEMO_COMMUNITY_TEMPLATES.length + communityTemplates.length}</div><div className="badge-chip">النتائج المحفوظة: {results.length}</div><div className="badge-chip">آخر لعبة: {latest?.title || "لا يوجد"}</div></div>
+            <div className="kc-card"><div className="section-title">ألعابي</div>{savedGames.length? <div style={{display:"grid",gap:"0.35rem"}}>{savedGames.slice(0,3).map(g=><div key={g.id} style={{background:"#141e2d",padding:"0.45rem",borderRadius:"8px"}}><div style={{color:"#f0ede8",fontWeight:700}}>{g.title}</div><div style={{fontSize:"0.72rem",color:"#94a3b8"}}>عدد الأسئلة: {g.questionCount} • {new Date(g.updatedAt).toLocaleDateString("ar")}</div><div style={{display:"flex",gap:"0.35rem",marginTop:"0.25rem"}}><button className="btn-secondary" onClick={()=>loadSavedGame(g)}>تشغيل</button><button className="btn-secondary" onClick={()=>loadSavedGame(g)}>تعديل</button></div></div>)}</div> : <div style={{color:"#94a3b8"}}>لا توجد ألعاب محفوظة بعد. أنشئ لعبة جديدة أو استخدم أحد القوالب.<div style={{marginTop:"0.35rem",display:"flex",gap:"0.35rem"}}><button className="btn-gold" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setAppView("templates")}>عرض القوالب</button></div></div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("games")}>عرض كل الألعاب</button></div>
+            <div className="kc-card"><div className="section-title">آخر النتائج</div>{results.length ? <div style={{display:"grid",gap:"0.35rem"}}>{results.slice(0,3).map(r=><div key={r.id} style={{fontSize:"0.8rem",color:"#cbd5e1"}}>{r.gameTitle} • {r.winner} • {new Date(r.at).toLocaleDateString("ar")} • {r.blueClaimed}/{r.redClaimed}</div>)}</div> : <div style={{color:"#94a3b8"}}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div>}<button className="btn-secondary" style={{marginTop:"0.6rem"}} onClick={()=>setAppView("results")}>عرض كل النتائج</button></div>
+            <div className="kc-card"><div className="section-title">متابعة سريعة</div>{latest ? <><div style={{color:"#f0ede8", marginBottom:"0.5rem"}}>{latest.title}</div><button className="btn-gold" onClick={()=>loadSavedGame(latest)}>تشغيل آخر لعبة</button></> : <div style={{color:"#94a3b8"}}>اختر قالباً جاهزاً أو أنشئ لعبة جديدة للبدء.</div>}</div>
             <div className="kc-card" style={{ gridColumn:"1 / -1" }}><div className="section-title">قوالب مقترحة</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:"0.5rem"}}>{suggestedTemplates.map(tpl=><div key={tpl.id} style={{background:"#141e2d",border:"1px solid #1a2332",borderRadius:"10px",padding:"0.65rem"}}><div style={{fontWeight:700,color:"#f0ede8"}}>{tpl.name}</div><div style={{fontSize:"0.75rem",color:"#94a3b8"}}>{tpl.categories[0] || "عام"} • {tpl.level}</div><div style={{fontSize:"0.75rem",color:"#94a3b8"}}>الأسئلة: {tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length}</div><button className="btn-secondary" style={{marginTop:"0.45rem"}} onClick={()=>{setAppView("host"); if(!room) handleCreate(); setTimeout(()=>useTemplate(tpl), 250);}}>استخدم القالب</button></div>)}</div><button className="btn-secondary" style={{marginTop:"0.65rem"}} onClick={()=>setAppView("templates")}>عرض كل القوالب</button></div>
           </div>
         )}
+        {appView === "settings" && <div className="kc-card"><div className="section-title">الإعدادات</div><div style={{color:"#94a3b8"}}>إعدادات الواجهة المحلية فقط.</div></div>}
         {appView === "templates" && <div className="kc-card"><div className="section-title">قوالب الألعاب</div><div style={{color:"#94a3b8"}}>انتقل إلى وضع الاستضافة ثم افتح تبويب الإعداد لاستخدام القوالب.</div><button className="btn-gold" style={{marginTop:"0.75rem"}} onClick={()=>{ setAppView("host"); if(!room) handleCreate(); setActiveTab("setup"); }}>فتح القوالب</button></div>}
         {appView === "results" && (
           <div className="kc-card">
