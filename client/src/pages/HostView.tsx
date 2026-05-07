@@ -162,16 +162,25 @@ type StarterTemplate = {
   name: string;
   categories: string[];
   level: "مبتدئ" | "سهل" | "متوسط" | "صعب" | "مفتوح";
+  subject?: string;
+  difficultyLabel?: "easy"|"medium"|"hard";
+  estimatedMinutes?: number;
+  visibility?: "local"|"public"|"private";
+  favorite?: boolean;
   description: string;
   questions: string[];
   boardBanks?: Array<{ cellId:string; label:string; questionBank:any[] }>;
   createdAt?: string;
+  updatedAt?: string;
   userCreated?: boolean;
 };
 type TemplateQuestionItem = {
+  type?: "mcq"|"tf"|"fill"|"letter"|"image";
   letter?: string;
   question: string;
   answer: string;
+  choices?: string[];
+  imageUrl?: string;
   category?: string;
   difficulty?: BoardCell["difficulty"];
   hint?: string;
@@ -213,7 +222,7 @@ const createFullLetterTemplate = (id: string, name: string, category: string, le
       explanation: "",
     })),
   }));
-  return { id, name, categories: [category], level, description: `قالب ${category} محلي.`, questions: boardBanks.map(b => b.questionBank[0].question), boardBanks };
+  return { id, name, categories: [category], subject: category, level, difficultyLabel: level==="صعب"?"hard":level==="سهل"?"easy":"medium", estimatedMinutes: 12, visibility:"local", description: `قالب ${category} محلي.`, questions: boardBanks.map(b => b.questionBank[0].question), boardBanks };
 };
 const STARTER_TEMPLATES: StarterTemplate[] = [
   { id:"tpl-basic-letters", name:"قالب الحروف الأساسية", categories:["لغة عربية"], level:"مبتدئ", description:"لعبة بسيطة للتدرب على الحروف العربية.", questions:[], boardBanks:createFullLetterTemplate("x","x","لغة عربية","سهل",2).boardBanks },
@@ -316,6 +325,7 @@ export default function HostView() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [templateLevel, setTemplateLevel] = useState("");
+  const [templateSort, setTemplateSort] = useState<"newest"|"title"|"questions"|"difficulty">("newest");
   const [questionSearch, setQuestionSearch] = useState("");
   const [questionCategoryFilter, setQuestionCategoryFilter] = useState("");
   const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState<""|"easy"|"medium"|"hard">("");
@@ -1503,10 +1513,25 @@ export default function HostView() {
                 <select className="kc-input" style={{ maxWidth:160 }} value={templateLevel} onChange={e=>setTemplateLevel(e.target.value)}>
                   <option value="">كل المستويات</option><option value="سهل">سهل</option><option value="متوسط">متوسط</option><option value="صعب">صعب</option>
                 </select>
+                <select className="kc-input" style={{ maxWidth:170 }} value={templateSort} onChange={e=>setTemplateSort(e.target.value as any)}>
+                  <option value="newest">الأحدث</option><option value="title">العنوان A-Z</option><option value="questions">عدد الأسئلة</option><option value="difficulty">الصعوبة</option>
+                </select>
               </div>
               <div style={{ fontWeight:700, color:"#94a3b8", marginBottom:"0.5rem" }}>نماذج جاهزة مستوحاة من المجتمع (قوالب تجريبية محلية)</div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
-                {[...STARTER_TEMPLATES, ...DEMO_COMMUNITY_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).map(tpl => {
+                {[...STARTER_TEMPLATES, ...DEMO_COMMUNITY_TEMPLATES, ...communityTemplates]
+                .filter(tpl=>!templateSearch || tpl.name.includes(templateSearch) || (tpl.subject || "").includes(templateSearch))
+                .filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory))
+                .filter(tpl=>!templateLevel || tpl.level===templateLevel)
+                .sort((a,b)=>{
+                  const aQ = a.boardBanks?.reduce((n,x)=>n+(x.questionBank?.length||0),0) || a.questions.length;
+                  const bQ = b.boardBanks?.reduce((n,x)=>n+(x.questionBank?.length||0),0) || b.questions.length;
+                  if (templateSort==="title") return a.name.localeCompare(b.name, "ar");
+                  if (templateSort==="questions") return bQ-aQ;
+                  if (templateSort==="difficulty") return String(a.level).localeCompare(String(b.level), "ar");
+                  return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
+                })
+                .map(tpl => {
                   const totalQ = tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length;
                   const covered = tpl.boardBanks?.filter(b=>b.questionBank?.length).length || 0;
                   const avg = covered ? (totalQ / covered).toFixed(1) : "0";
@@ -1517,6 +1542,8 @@ export default function HostView() {
                     <div style={{ fontSize:"0.74rem", color:"#94a3b8", lineHeight:1.8 }}>
                       <div>التصنيف: {tpl.categories.join("، ")}</div>
                       <div>المستوى: {tpl.level}</div>
+                      <div>الصف/المرحلة: {tpl.level}</div>
+                      <div>الوقت المتوقع: {tpl.estimatedMinutes || Math.max(8, Math.round(totalQ * 0.7))} دقيقة</div>
                       <div>الحروف المغطاة: {covered}</div>
                       <div>إجمالي الأسئلة: {totalQ}</div>
                       <div>المتوسط: {avg} أسئلة لكل حرف</div>
