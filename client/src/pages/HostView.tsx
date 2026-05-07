@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 import {
   createRoom, generateUniqueCode, updateRoom, subscribeToRoom, deleteRoom,
   addPlayerManually, assignPlayerTeam, removePlayer,
@@ -268,6 +269,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 // HOST VIEW
 // ═══════════════════════════════════════════════════════════════
 export default function HostView() {
+  const [, setLocation] = useLocation();
   const [room, setRoom] = useState<RoomState | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [creating, setCreating] = useState(false);
@@ -281,6 +283,10 @@ export default function HostView() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [templateLevel, setTemplateLevel] = useState("");
+  const hostProfile = (() => {
+    try { return JSON.parse(localStorage.getItem("kc_host_profile") || "{}"); }
+    catch { return {}; }
+  })() as { hostName?: string; className?: string; orgName?: string };
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -885,6 +891,10 @@ export default function HostView() {
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.5rem" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"1rem", flexWrap:"wrap" }}>
               <div style={{ fontWeight:900, fontSize:"1.3rem", color:"#f59e0b" }}>وصلة المعرفة</div>
+              <span style={{ fontSize:"0.8rem", color:"#cbd5e1" }}>لوحة التحكم</span>
+              {hostProfile.hostName && <span style={{ fontSize:"0.78rem", color:"#94a3b8" }}>مرحباً، {hostProfile.hostName}</span>}
+              {hostProfile.className && <span style={{ fontSize:"0.72rem", color:"#64748b" }}>الصف/الفعالية: {hostProfile.className}</span>}
+              {hostProfile.orgName && <span style={{ fontSize:"0.72rem", color:"#64748b" }}>الجهة: {hostProfile.orgName}</span>}
               <div style={{ display:"flex", alignItems:"center", gap:"0.4rem" }}>
                 <span style={{ fontSize:"0.75rem", color:"#64748b" }}>رمز الغرفة:</span>
                 <span style={{ fontWeight:900, fontSize:"1.2rem", color:"#f0ede8", letterSpacing:"0.15em", background:"#1a2332", padding:"0.2rem 0.75rem", borderRadius:"8px", cursor:"pointer" }}
@@ -904,6 +914,7 @@ export default function HostView() {
             <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
               {room.gameStatus==="lobby" && <button className="btn-gold" style={{ fontSize:"0.8rem" }} onClick={startGame}>▶ بدء اللعبة</button>}
               <button className="btn-danger" style={{ fontSize:"0.8rem" }} onClick={resetGame}>↺ إعادة الضبط</button>
+              <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>{ localStorage.removeItem("kc_host_profile"); setLocation("/"); }}>الخروج</button>
             </div>
           </div>
           {/* Link row */}
