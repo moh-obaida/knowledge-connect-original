@@ -1237,7 +1237,7 @@ export default function HostView() {
                 <div key={i} style={{ fontSize:"0.86rem", color:"#f0ede8" }}>• {q}</div>
               ))}
             </div>
-            <button className="btn-secondary" onClick={()=>setPreviewTemplate(null)}>إغلاق المعاينة</button>
+            <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap" }}><button className="btn-gold" onClick={()=>{ if (previewTemplate) useTemplate(previewTemplate); setPreviewTemplate(null); }}>استخدم القالب</button><button className="btn-secondary" onClick={()=>{ if (previewTemplate) duplicateTemplate(previewTemplate); setPreviewTemplate(null); }}>تعديل نسخة</button><button className="btn-secondary" onClick={()=>setPreviewTemplate(null)}>رجوع</button></div>
           </div>
         </div>
       )}
@@ -1455,15 +1455,15 @@ export default function HostView() {
                 <button className="btn-secondary" onClick={importTemplateCsv}>استيراد من جدول (محلي)</button>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
-                <input className="kc-input" style={{ maxWidth:240 }} placeholder="ابحث في قوالب الألعاب..." value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
+                <input className="kc-input" style={{ maxWidth:240 }} placeholder="بحث عن قالب" value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
                 <select className="kc-input" style={{ maxWidth:180 }} value={templateCategory} onChange={e=>setTemplateCategory(e.target.value)}>
-                  <option value="">التصنيف</option><option value="إسلاميات">إسلاميات</option><option value="لغة عربية">لغة عربية</option><option value="رياضيات">رياضيات</option><option value="معرفة عامة">معرفة عامة</option><option value="مفردات">مفردات</option><option value="قراءة وفهم">قراءة وفهم</option><option value="تقنية">تقنية</option><option value="حياة يومية">حياة يومية</option><option value="غير مصنف">غير مصنف</option>
+                  <option value="">كل التصنيفات</option><option value="إسلاميات">إسلاميات</option><option value="لغة عربية">لغة عربية</option><option value="رياضيات">رياضيات</option><option value="معرفة عامة">معرفة عامة</option><option value="مفردات">مفردات</option><option value="قراءة وفهم">قراءة وفهم</option><option value="تقنية">تقنية</option><option value="حياة يومية">حياة يومية</option><option value="غير مصنف">غير مصنف</option>
                 </select>
                 <select className="kc-input" style={{ maxWidth:160 }} value={templateLevel} onChange={e=>setTemplateLevel(e.target.value)}>
-                  <option value="">المستوى</option><option value="سهل">سهل</option><option value="متوسط">متوسط</option><option value="صعب">صعب</option>
+                  <option value="">كل المستويات</option><option value="سهل">سهل</option><option value="متوسط">متوسط</option><option value="صعب">صعب</option>
                 </select>
               </div>
-              <div style={{ fontWeight:700, color:"#94a3b8", marginBottom:"0.5rem" }}>قوالب من المجتمع</div>
+              <div style={{ fontWeight:700, color:"#94a3b8", marginBottom:"0.5rem" }}>نماذج جاهزة مستوحاة من المجتمع (قوالب تجريبية محلية)</div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
                 {[...STARTER_TEMPLATES, ...DEMO_COMMUNITY_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).map(tpl => {
                   const totalQ = tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length;
@@ -1485,7 +1485,7 @@ export default function HostView() {
                     <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button>
                       <button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={()=>useTemplate(tpl)}>استخدم القالب</button>
-                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>duplicateTemplate(tpl)}>نسخ القالب</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>duplicateTemplate(tpl)}>تعديل نسخة</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplate(tpl)}>تصدير قالب</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplateCsv(tpl)}>تصدير كجدول</button>
                       {tpl.userCreated && <button className="btn-danger" style={{ fontSize:"0.75rem" }} onClick={()=>deleteTemplate(tpl)}>حذف القالب</button>}
