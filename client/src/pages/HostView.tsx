@@ -860,6 +860,10 @@ export default function HostView() {
   const usedCells = room.board.filter(c=>c.used).length;
   const totalCells = room.board.length;
   const winningPathIds = room.winnerTeam ? findWinningPath(room.board, room.gridSize, room.winnerTeam as 1|2) : [];
+  const filteredTemplates = [...STARTER_TEMPLATES, ...communityTemplates]
+    .filter(tpl=>!templateSearch || tpl.name.includes(templateSearch))
+    .filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory))
+    .filter(tpl=>!templateLevel || tpl.level===templateLevel);
 
   return (
     <div style={{ minHeight:"100vh", background: appearanceMode==="light" ? "#f8fafc" : appearanceMode==="balanced" ? "#e2e8f0" : "#090d18" }}>
@@ -1052,7 +1056,7 @@ export default function HostView() {
                 </select>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:"0.75rem" }}>
-                {[...STARTER_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).map(tpl => {
+                {filteredTemplates.map(tpl => {
                   const totalQ = tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length;
                   const covered = tpl.boardBanks?.filter(b=>b.questionBank?.length).length || 0;
                   const avg = covered ? (totalQ / covered).toFixed(1) : "0";
@@ -1080,7 +1084,7 @@ export default function HostView() {
                     </div>
                   </div>
                 );})}
-                {[...STARTER_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).length===0 && (
+                {filteredTemplates.length===0 && (
                   <div style={{ gridColumn:"1 / -1", color:"#94a3b8", fontSize:"0.84rem" }}>لا توجد قوالب بعد.</div>
                 )}
               </div>
