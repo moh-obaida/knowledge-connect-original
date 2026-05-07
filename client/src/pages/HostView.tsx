@@ -316,6 +316,11 @@ export default function HostView() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [templateLevel, setTemplateLevel] = useState("");
+  const [questionSearch, setQuestionSearch] = useState("");
+  const [questionCategoryFilter, setQuestionCategoryFilter] = useState("");
+  const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState<""|"easy"|"medium"|"hard">("");
+  const [bulkQuestions, setBulkQuestions] = useState("");
+  const [bulkPreview, setBulkPreview] = useState<Array<{label:string; question:string; answer:string; error?:string}>>([]);
   const [appView, setAppView] = useState<"dashboard"|"host"|"templates"|"games"|"results"|"settings">("dashboard");
   const [profile, setProfile] = useState<LocalProfile>({ hostName: "", className: "", orgName: "" });
   const [isLogged, setIsLogged] = useState(false);
@@ -1161,6 +1166,45 @@ export default function HostView() {
     );
   }
 
+  const questionRows = sortedBoard(room.board).map(cell => {
+    const bank = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank : [];
+    const first = bank[0] || (cell.question ? { question:cell.question, answer:cell.answer, category:cell.category, difficulty:cell.difficulty } : null);
+    return { cell, count: bank.length || (cell.question ? 1 : 0), first };
+  });
+  const categories = Array.from(new Set(questionRows.map(r => r.first?.category || "غير مصنف")));
+  const filteredQuestionRows = questionRows.filter(r => {
+    const txt = `${r.cell.label} ${r.first?.question || ""} ${r.first?.answer || ""}`;
+    if (questionSearch && !txt.includes(questionSearch)) return false;
+    if (questionCategoryFilter && (r.first?.category || "غير مصنف") !== questionCategoryFilter) return false;
+    if (questionDifficultyFilter && (r.first?.difficulty || "") !== questionDifficultyFilter) return false;
+    return true;
+  });
+  const parseBulkQuestions = () => {
+    const lines = bulkQuestions.split("\n").map(l=>l.trim()).filter(Boolean);
+    const parsed = lines.map(line => {
+      const parts = line.split("|").map(x=>x.trim());
+      if (parts.length >= 3) return { label: parts[0], question: parts[1], answer: parts[2] };
+      if (parts.length === 2) return { label: "", question: parts[0], answer: parts[1] };
+      return { label: "", question: "", answer: "", error: line };
+    });
+    setBulkPreview(parsed);
+    if (parsed.some(p=>p.error || !p.question || !p.answer)) showToast.warning("بعض الأسطر غير مكتملة. تأكد من كتابة الحرف والسؤال والإجابة.");
+  };
+  const applyBulkQuestions = async () => {
+    if (!bulkPreview.length) { showToast.warning("نفّذ المعاينة أولاً."); return; }
+    const emptyCells = sortedBoard(room.board);
+    let idx = 0;
+    const next = room.board.map(c=>{
+      const direct = bulkPreview.find(p=>p.label && normalizeArabicLetter(p.label)===normalizeArabicLetter(c.label) && p.question && p.answer);
+      const item = direct || bulkPreview.filter(p=>!p.label && p.question && p.answer)[idx++];
+      if (!item) return c;
+      return { ...c, question:item.question, answer:item.answer, category:c.category||"غير مصنف", difficulty:c.difficulty||"medium" };
+    });
+    const unassigned = bulkPreview.filter(p=>!p.label && p.question && p.answer).length - idx;
+    if (unassigned > 0) showToast.warning("عدد الأسئلة أكبر من عدد الخلايا المتاحة.");
+    await push({ board: next as any });
+    showToast.success("تمت إضافة الأسئلة.");
+  };
   const filledCells = room.board.filter(c=>c.question.trim()).length;
   const claimedCells = room.board.filter(c=>c.claimedBy!==0).length;
   const usedCells = room.board.filter(c=>c.used).length;
@@ -1349,13 +1393,17 @@ export default function HostView() {
             {/* Cell list */}
             <div className="kc-card" style={{ maxHeight:"75vh", overflowY:"auto" }}>
               <div className="section-title">قائمة الحروف والأسئلة</div>
+              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.6rem" }}>
+                <input className="kc-input" style={{ maxWidth:220 }} placeholder="بحث في الأسئلة" value={questionSearch} onChange={e=>setQuestionSearch(e.target.value)} />
+                <select className="kc-input" style={{ maxWidth:180 }} value={questionCategoryFilter} onChange={e=>setQuestionCategoryFilter(e.target.value)}><option value="">كل التصنيفات</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select>
+                <select className="kc-input" style={{ maxWidth:150 }} value={questionDifficultyFilter} onChange={e=>setQuestionDifficultyFilter(e.target.value as any)}><option value="">كل المستويات</option><option value="easy">سهل</option><option value="medium">متوسط</option><option value="hard">صعب</option></select>
+                <div style={{ color:"#94a3b8", fontSize:"0.8rem" }}>إجمالي الأسئلة: {questionRows.reduce((n,r)=>n+r.count,0)}</div>
+              </div>
               <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
-                {sortedBoard(room.board).map(cell=>(
-                  (() => { const count = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank.length : (cell.question ? 1 : 0);
-                  const firstQ = Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank[0] : null;
-                  const qText = firstQ?.question || cell.question;
-                  const qCategory = firstQ?.category || cell.category;
-                  const qDifficulty = firstQ?.difficulty || cell.difficulty;
+                {filteredQuestionRows.map(({cell,count,first})=>(
+                  (() => { const qText = first?.question || cell.question;
+                  const qCategory = first?.category || cell.category;
+                  const qDifficulty = first?.difficulty || cell.difficulty;
                   return (
                   <div key={cell.id} onClick={()=>setEditingCell(cell)}
                     style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.55rem 0.75rem",
@@ -1378,6 +1426,19 @@ export default function HostView() {
                   ); })()
                 ))}
               </div>
+            </div>
+
+            <div className="kc-card" style={{ gridColumn:"1 / -1" }}>
+              <div className="section-title">إضافة أسئلة دفعة واحدة</div>
+              <div style={{ fontSize:"0.78rem", color:"#94a3b8", marginBottom:"0.5rem" }}>اكتب كل سؤال في سطر مستقل بهذا الشكل: الحرف | السؤال | الإجابة</div>
+              <textarea className="kc-input" rows={5} value={bulkQuestions} onChange={e=>setBulkQuestions(e.target.value)} placeholder="أ | ما ضد الكذب؟ | الصدق
+ما معنى الأمانة؟ | حفظ الحقوق" />
+              <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem", flexWrap:"wrap" }}>
+                <button className="btn-secondary" onClick={parseBulkQuestions}>معاينة الأسئلة</button>
+                <button className="btn-gold" onClick={applyBulkQuestions}>إضافة الأسئلة</button>
+                <button className="btn-danger" onClick={()=>{setBulkQuestions("");setBulkPreview([]);}}>إلغاء</button>
+              </div>
+              {!!bulkPreview.length && <div style={{ marginTop:"0.6rem", fontSize:"0.78rem", color:"#cbd5e1" }}>{bulkPreview.slice(0,8).map((p,i)=><div key={i}>{p.label?`[${p.label}] `:""}{p.question} ← {p.answer}{p.error?" (خطأ)":""}</div>)}</div>}
             </div>
 
             <div className="kc-card" style={{ gridColumn:"1 / -1" }}>
