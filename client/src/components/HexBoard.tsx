@@ -12,17 +12,22 @@ interface HexBoardProps {
   onCellClick?: (cell: BoardCell) => void;
   winnerTeam?: 0 | 1 | 2;
   compact?: boolean;
+  winningPathIds?: string[];
 }
 
 export default function HexBoard({
   board, gridSize, mode, selectedCellId = "",
-  team1, team2, onCellClick, compact = false,
+  team1, team2, onCellClick, compact = false, winningPathIds = [],
 }: HexBoardProps) {
   const sorted = sortedBoard(board);
   const safeGrid = ([4, 5, 6].includes(gridSize) ? gridSize : 5) as 4 | 5 | 6;
-  const cellSize = compact ? (safeGrid === 4 ? 70 : safeGrid === 5 ? 60 : 52)
-                           : (safeGrid === 4 ? 90 : safeGrid === 5 ? 78 : 66);
-  const gap = 0;
+  const cellSize = compact ? (safeGrid === 4 ? 68 : safeGrid === 5 ? 58 : 50)
+                           : (safeGrid === 4 ? 84 : safeGrid === 5 ? 72 : 62);
+  const rows = Array.from({ length: safeGrid }, (_, row) =>
+    sorted.slice(row * safeGrid, row * safeGrid + safeGrid),
+  );
+  const verticalOverlap = cellSize * 0.26;
+  const rowOffset = cellSize * 0.5;
 
   return (
     <div style={{ position: "relative", padding: "8px" }}>
@@ -36,21 +41,15 @@ export default function HexBoard({
         </>
       )}
 
-      {/* Grid */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${safeGrid}, ${cellSize}px)`,
-        gap: `${gap}px`,
-        direction: "ltr",
-        justifyContent: "center",
-        padding: "8px 12px",
-      }}>
-        {sorted.map((cell, idx) => {
-          const row = Math.floor(idx / safeGrid);
-          const isOddRow = row % 2 === 1;
+      {/* Connected honeycomb grid */}
+      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "100%", overflowX: "hidden", padding: "8px 6px" }}>
+        {rows.map((rowCells, row) => (
+          <div key={`row-${row}`} style={{ display: "grid", gridTemplateColumns: `repeat(${safeGrid}, ${cellSize}px)`, columnGap: `${-cellSize * 0.04}px`, marginInlineStart: row % 2 === 1 ? `${rowOffset}px` : 0 }}>
+            {rowCells.map((cell) => {
           const claimed1 = cell.claimedBy === 1;
           const claimed2 = cell.claimedBy === 2;
           const isSelected = cell.id === selectedCellId;
+          const isWinning = winningPathIds.includes(cell.id);
           const hasQ = !!cell.question.trim();
 
           let bg = "#f8fafc";
@@ -69,6 +68,15 @@ export default function HexBoard({
             shadow = "0 0 20px rgba(245,158,11,0.5)";
           } else if (mode === "setup" && hasQ) {
             bg = "#dcfce7"; border = "2px solid #22c55e"; textColor = "#166534";
+          }
+          if (cell.used && !claimed1 && !claimed2 && mode !== "setup") {
+            bg = "#202c3f";
+            border = "2px solid #334155";
+            textColor = "#94a3b8";
+          }
+          if (isWinning) {
+            border = "3px solid #fbbf24";
+            shadow = "0 0 0 2px rgba(251,191,36,0.3), 0 0 20px rgba(251,191,36,0.45)";
           }
 
           const clickable = !!onCellClick && (
@@ -99,7 +107,6 @@ export default function HexBoard({
                 boxShadow: shadow,
                 outline: border,
                 outlineOffset: "-3px",
-                marginTop: isOddRow ? cellSize * 0.26 : 0,
                 animation: isSelected ? "hexGlow 1.5s ease-in-out infinite" : "none",
                 userSelect: "none",
               }}
@@ -131,7 +138,9 @@ export default function HexBoard({
               )}
             </div>
           );
-        })}
+            })}
+          </div>
+        ))}
       </div>
 
       <style>{`

@@ -6,6 +6,7 @@ import {
 import { isFirebaseConfigured } from "../lib/firebase";
 import {
   defaultRoomState, generateBoard, shuffleBoard, sortedBoard, checkWinner,
+  findWinningPath,
   loadLastRoomCode, saveLastRoomCode,
   type RoomState, type BoardCell, type ActiveQuestion, type Player,
 } from "../lib/store";
@@ -817,6 +818,7 @@ export default function HostView() {
   const redClaimedCells = room.board.filter(c=>c.claimedBy===2).length;
   const usedCells = room.board.filter(c=>c.used).length;
   const totalCells = room.board.length;
+  const winningPathIds = room.winnerTeam ? findWinningPath(room.board, room.gridSize, room.winnerTeam as 1|2) : [];
 
   return (
     <div style={{ minHeight:"100vh", background:"#090d18" }}>
@@ -1202,7 +1204,7 @@ export default function HostView() {
               </div>
               <HexBoard board={room.board} gridSize={room.gridSize} mode="host-game"
                 selectedCellId={room.selectedCellId} team1={room.team1} team2={room.team2}
-                onCellClick={handleCellClick} winnerTeam={room.winnerTeam} />
+                onCellClick={handleCellClick} winnerTeam={room.winnerTeam} winningPathIds={winningPathIds} />
               {room.activeQuestion && room.questionStatus!=="correct" && (
                 <button className="btn-gold" style={{ width:"100%", marginTop:"1rem", fontSize:"0.9rem" }} onClick={markCorrect}>
                   🎯 منح الحرف "{room.activeQuestion.cellLabel}" للفريق النشط
