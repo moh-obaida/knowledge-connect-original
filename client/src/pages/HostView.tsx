@@ -307,10 +307,19 @@ export default function HostView() {
   const [visualTheme, setVisualTheme] = useState<string>(localStorage.getItem("kc_visual_theme") || "classic");
   const [hostViewMode, setHostViewMode] = useState<"dashboard"|"room">("dashboard");
   const [dashboardTab, setDashboardTab] = useState<"home"|"games"|"templates"|"results"|"settings">("home");
+  const [dashboardHostName, setDashboardHostName] = useState("");
+  const [dashboardClassName, setDashboardClassName] = useState("");
+  const [dashboardOrgName, setDashboardOrgName] = useState("");
+  const [gamesSearch, setGamesSearch] = useState("");
   const hostProfile = (() => {
     try { return JSON.parse(localStorage.getItem("kc_host_profile") || "{}"); }
     catch { return {}; }
   })() as { hostName?: string; className?: string; orgName?: string };
+  useEffect(() => {
+    setDashboardHostName(hostProfile.hostName || "");
+    setDashboardClassName(hostProfile.className || "");
+    setDashboardOrgName(hostProfile.orgName || "");
+  }, [hostProfile.hostName, hostProfile.className, hostProfile.orgName]);
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -838,6 +847,10 @@ export default function HostView() {
   if (hostViewMode === "dashboard") {
     const templatesCount = STARTER_TEMPLATES.length + communityTemplates.length;
     const gamesCount = communityTemplates.filter(t=>t.userCreated).length;
+    const dashboardFilteredTemplates = [...STARTER_TEMPLATES, ...communityTemplates]
+      .filter(tpl=>!templateSearch || tpl.name.includes(templateSearch))
+      .filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory))
+      .filter(tpl=>!templateLevel || tpl.level===templateLevel);
     return (
       <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#090d18 0%,#0f172a 60%,#090d18 100%)", padding:"1rem" }}>
         <div style={{ maxWidth:1200, margin:"0 auto" }}>
@@ -863,11 +876,42 @@ export default function HostView() {
             <div className="kc-card"><div className="section-title">إحصاءات</div><div style={{ display:"grid", gap:"0.4rem" }}>{[{k:"القوالب المتاحة",v:templatesCount},{k:"الألعاب المحفوظة",v:gamesCount},{k:"النتائج المحفوظة",v:0},{k:"آخر لعبة",v:room?.gameTitle || "—"}].map(s=><div key={s.k} style={{ display:"flex", justifyContent:"space-between", color:"#cbd5e1" }}><span>{s.k}</span><strong>{s.v}</strong></div>)}</div></div>
             <div className="kc-card"><div className="section-title">ألعابي</div><div style={{ color:"#94a3b8", fontSize:"0.84rem" }}>لا توجد ألعاب محفوظة بعد. أنشئ لعبة جديدة أو استخدم أحد القوالب.</div></div>
             <div className="kc-card"><div className="section-title">آخر النتائج</div><div style={{ color:"#94a3b8", fontSize:"0.84rem" }}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div></div>
+            <div className="kc-card" style={{ gridColumn:"1 / -1" }}>
+              <div className="section-title">قوالب مميزة</div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))", gap:"0.6rem" }}>
+                {STARTER_TEMPLATES.slice(0,4).map(tpl=>{
+                  const count = tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length;
+                  return <div key={tpl.id} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.6rem" }}>
+                    <div style={{ fontWeight:700, color:"#f0ede8" }}>{tpl.name}</div>
+                    <div style={{ fontSize:"0.74rem", color:"#94a3b8" }}>التصنيف: {tpl.categories.join("، ")} • المستوى: {tpl.level}</div>
+                    <div style={{ fontSize:"0.74rem", color:"#94a3b8" }}>عدد الأسئلة: {count}</div>
+                    <button className="btn-gold" style={{ marginTop:"0.45rem", fontSize:"0.75rem" }} onClick={async()=>{ if(!room) await handleCreate(); setHostViewMode("room"); setTimeout(()=>useTemplate(tpl),200); }}>استخدام القالب</button>
+                  </div>;
+                })}
+              </div>
+            </div>
+            <div className="kc-card" style={{ gridColumn:"1 / -1" }}>
+              <div className="section-title">متابعة سريعة</div>
+              <div style={{ color:"#94a3b8", fontSize:"0.85rem" }}>لا توجد أنشطة حديثة بعد. ابدأ بإنشاء لعبة جديدة أو استخدم أحد القوالب الجاهزة.</div>
+            </div>
           </div>}
-          {dashboardTab==="templates" && <div className="kc-card"><div className="section-title">القوالب</div><div style={{ color:"#94a3b8" }}>عرض القوالب واستخدامها من شاشة الاستضافة.</div><button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>استخدام القالب</button></div>}
-          {dashboardTab==="games" && <div className="kc-card"><div className="section-title">ألعابي</div><input className="kc-input" placeholder="ابحث عن لعبة..." /><div style={{ color:"#94a3b8", marginTop:"0.6rem" }}>لا توجد ألعاب محفوظة بعد.</div></div>}
-          {dashboardTab==="results" && <div className="kc-card"><div className="section-title">النتائج</div><button className="btn-secondary">تصدير كل النتائج</button><div style={{ color:"#94a3b8", marginTop:"0.6rem" }}>لا توجد نتائج محفوظة بعد.</div></div>}
-          {dashboardTab==="settings" && <div className="kc-card"><div className="section-title">الإعدادات</div><div style={{ color:"#94a3b8" }}>بيانات المضيف • إعدادات اللعبة الافتراضية • البيانات المحلية</div></div>}
+          {dashboardTab==="templates" && <div className="kc-card"><div className="section-title">القوالب</div>
+            <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap", marginBottom:"0.7rem" }}>
+              <input className="kc-input" style={{ maxWidth:240 }} placeholder="ابحث عن قالب..." value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
+              <select className="kc-input" style={{ maxWidth:170 }} value={templateCategory} onChange={e=>setTemplateCategory(e.target.value)}><option value="">كل التصنيفات</option><option value="اللغة العربية">اللغة العربية</option><option value="التربية الإسلامية">التربية الإسلامية</option><option value="العلوم">العلوم</option><option value="حروف">حروف</option><option value="مراجعة عامة">مراجعة عامة</option><option value="غير مصنف">غير مصنف</option></select>
+              <select className="kc-input" style={{ maxWidth:150 }} value={templateLevel} onChange={e=>setTemplateLevel(e.target.value)}><option value="">كل المستويات</option><option value="سهل">سهل</option><option value="متوسط">متوسط</option><option value="صعب">صعب</option></select>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:"0.6rem" }}>
+              {dashboardFilteredTemplates.map(tpl=>{ const count = tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length; return <div key={tpl.id} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.65rem" }}><div style={{ fontWeight:700, color:"#f0ede8" }}>{tpl.name}</div><div style={{ fontSize:"0.74rem", color:"#94a3b8" }}>{tpl.description || "قالب تعليمي سريع"}</div><div style={{ fontSize:"0.74rem", color:"#94a3b8" }}>التصنيف: {tpl.categories.join("، ")} • المستوى: {tpl.level} • الأسئلة: {count}</div><div style={{ display:"flex", gap:"0.35rem", marginTop:"0.45rem", flexWrap:"wrap" }}><button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button><button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={async()=>{ if(!room) await handleCreate(); setHostViewMode("room"); setTimeout(()=>useTemplate(tpl),200); }}>استخدام القالب</button></div></div>; })}
+            </div>
+          </div>}
+          {dashboardTab==="games" && <div className="kc-card"><div className="section-title">ألعابي</div><div style={{ color:"#94a3b8", marginBottom:"0.45rem", fontSize:"0.84rem" }}>إدارة ألعابك المحفوظة محلياً.</div><input className="kc-input" placeholder="ابحث عن لعبة..." value={gamesSearch} onChange={e=>setGamesSearch(e.target.value)} /><div style={{ marginTop:"0.7rem", background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.8rem" }}><div style={{ color:"#94a3b8" }}>لا توجد ألعاب محفوظة بعد. أنشئ لعبة جديدة أو استخدم أحد القوالب الجاهزة.</div><div style={{ display:"flex", gap:"0.4rem", marginTop:"0.55rem", flexWrap:"wrap" }}><button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setDashboardTab("templates")}>عرض القوالب</button><button className="btn-secondary" onClick={importBoard}>استيراد لعبة</button></div></div></div>}
+          {dashboardTab==="results" && <div className="kc-card"><div className="section-title">النتائج</div><div style={{ color:"#94a3b8", marginBottom:"0.5rem", fontSize:"0.84rem" }}>سجل النتائج المحلية للتحديات.</div><button className="btn-secondary">تصدير كل النتائج</button><div style={{ marginTop:"0.7rem", background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.8rem" }}><div style={{ color:"#94a3b8" }}>لا توجد نتائج محفوظة بعد. ابدأ لعبة جديدة لحفظ أول نتيجة.</div><div style={{ display:"flex", gap:"0.4rem", marginTop:"0.55rem", flexWrap:"wrap" }}><button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setDashboardTab("templates")}>عرض القوالب</button></div></div></div>}
+          {dashboardTab==="settings" && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:"0.7rem" }}>
+            <div className="kc-card"><div className="section-title">بيانات المضيف</div><label style={lbl}>اسم المضيف</label><input className="kc-input" value={dashboardHostName} onChange={e=>setDashboardHostName(e.target.value)} /><label style={lbl}>اسم الصف أو الفعالية</label><input className="kc-input" value={dashboardClassName} onChange={e=>setDashboardClassName(e.target.value)} /><label style={lbl}>اسم المدرسة أو الجهة</label><input className="kc-input" value={dashboardOrgName} onChange={e=>setDashboardOrgName(e.target.value)} /><button className="btn-gold" onClick={()=>{ localStorage.setItem("kc_host_profile", JSON.stringify({ hostName:dashboardHostName.trim(), className:dashboardClassName.trim(), orgName:dashboardOrgName.trim() })); showToast.success("تم حفظ الإعدادات."); }}>حفظ البيانات</button></div>
+            <div className="kc-card"><div className="section-title">إعدادات اللعبة الافتراضية</div><div style={{ color:"#94a3b8", fontSize:"0.82rem", marginBottom:"0.4rem" }}>اسم الفريق الأزرق: {room?.team1.name || "الفريق الأزرق"}</div><div style={{ color:"#94a3b8", fontSize:"0.82rem", marginBottom:"0.4rem" }}>اسم الفريق الأحمر: {room?.team2.name || "الفريق الأحمر"}</div><div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap" }}><button className="btn-secondary">مؤقت 30ث</button><button className="btn-secondary">مؤقت 60ث</button><button className="btn-secondary">تفعيل السرقة</button><button className="btn-secondary">إخفاء الإجابة</button></div></div>
+            <div className="kc-card"><div className="section-title">البيانات المحلية</div><div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}><button className="btn-secondary" onClick={()=>{ const blob = new Blob([JSON.stringify({ communityTemplates, hostProfile: { hostName:dashboardHostName, className:dashboardClassName, orgName:dashboardOrgName } }, null, 2)], { type:"application/json" }); const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="knowledge-connect-local-data.json"; a.click(); URL.revokeObjectURL(url); }}>تصدير البيانات</button><button className="btn-danger" onClick={()=>confirm("هل أنت متأكد من حذف البيانات المحلية؟", ()=>{ localStorage.removeItem(COMMUNITY_TEMPLATES_KEY); showToast.success("تم حذف البيانات المحلية."); setCommunityTemplates([]); })}>حذف البيانات المحلية</button></div></div>
+          </div>}
         </div>
       </div>
     );
