@@ -305,6 +305,8 @@ export default function HostView() {
   const [searchGame, setSearchGame] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterSource, setFilterSource] = useState("");
+  const [presentationMode, setPresentationMode] = useState(false);
+  const [skippedCount, setSkippedCount] = useState(0);
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -500,6 +502,7 @@ export default function HostView() {
   };
   const skipQ = async () => {
     if (!room) return;
+    setSkippedCount(v => v + 1);
     const cell = room.board.find(c=>c.id===room.activeQuestion?.cellId);
     const bank = cell ? (Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank : (cell.question ? [{ question:cell.question, answer:cell.answer, category:cell.category, difficulty:cell.difficulty, points:cell.points, hint:cell.hint, explanation:cell.explanation }] : [])) : [];
     if (room.activeQuestion && bank.length > 1) {
@@ -556,6 +559,7 @@ export default function HostView() {
         answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
         timerRunning:false, timerValue:room.timerSetting, winnerMessage:"", winnerTeam:0,
         questionStatus:"idle", gameStatus:"lobby", activeTeam:1, roundNumber:1 });
+      setSkippedCount(0);
       showToast.success("تم إعادة ضبط اللعبة");
     });
   };
@@ -877,6 +881,11 @@ export default function HostView() {
     };
     input.click();
   };
+  const endGameNow = async () => {
+    if (!room) return;
+    await push({ gameStatus:"finished", winnerMessage:"تم إنهاء اللعبة من المضيف", winnerTeam:0, timerRunning:false });
+    showToast.info("تم إنهاء اللعبة.");
+  };
 
   if (!isLogged) {
     return (
@@ -1057,12 +1066,17 @@ export default function HostView() {
                 {room.gameStatus==="lobby" ? "انتظار" : room.gameStatus==="active" ? `جارية • الجولة ${room.roundNumber}` : "منتهية"}
               </span>
               <span style={{ fontSize:"0.7rem", padding:"0.2rem 0.5rem", borderRadius:"6px", background:"#1a2332", color:"#64748b" }}>
-                🏷 لوحة تحكم المضيف
+                🏷 مركز الاستضافة
+              </span>
+              <span style={{ fontSize:"0.7rem", padding:"0.2rem 0.55rem", borderRadius:"9999px", background:"#1a2332", color:"#94a3b8" }}>
+                المضيف: {profile.hostName}{profile.className ? ` • ${profile.className}` : ""}
               </span>
             </div>
             <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
               {room.gameStatus==="lobby" && <button className="btn-gold" style={{ fontSize:"0.8rem" }} onClick={startGame}>▶ بدء اللعبة</button>}
               <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={saveCurrentGame}>💾 حفظ اللعبة</button>
+              <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>setPresentationMode(v=>!v)}>{presentationMode ? "الخروج من وضع العرض" : "وضع العرض"}</button>
+              <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={endGameNow}>إنهاء اللعبة</button>
               <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>setAppView("dashboard")}>🏠 لوحة التحكم</button>
               <button className="btn-danger" style={{ fontSize:"0.8rem" }} onClick={resetGame}>↺ إعادة اللعب</button>
             </div>
@@ -1078,7 +1092,7 @@ export default function HostView() {
       </div>
 
       {/* Tabs */}
-      <div style={{ background:"#0f1623", borderBottom:"1.5px solid #1a2332", padding:"0 1.25rem" }}>
+      {!presentationMode && <div style={{ background:"#0f1623", borderBottom:"1.5px solid #1a2332", padding:"0 1.25rem" }}>
         <div style={{ maxWidth:1400, margin:"0 auto", display:"flex", gap:"0.25rem", overflowX:"auto", paddingBottom:"0.4rem", paddingTop:"0.4rem" }}>
           {([
             { id:"setup", label:"إعداد أسئلة الحروف" },
@@ -1090,7 +1104,7 @@ export default function HostView() {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* Content */}
       <div className="container" style={{ paddingTop:"1.25rem", paddingBottom:"3rem" }}>
@@ -1227,9 +1241,23 @@ export default function HostView() {
           <div className="responsive-game-layout" style={{ display:"grid", gridTemplateColumns:"1fr 1.4fr", gap:"1.25rem" }}>
             {/* Left: controls */}
             <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+              <div className="kc-card">
+                <div className="section-title">ملخص التقدم</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.45rem" }}>
+                  <div className="badge-chip" style={{ borderColor:room.team1.color, color:room.team1.color }}>خلايا {room.team1.name}: {room.board.filter(c=>c.claimedBy===1).length}</div>
+                  <div className="badge-chip" style={{ borderColor:room.team2.color, color:room.team2.color }}>خلايا {room.team2.name}: {room.board.filter(c=>c.claimedBy===2).length}</div>
+                  <div className="badge-chip">الخلايا المتبقية: {room.board.filter(c=>c.claimedBy===0).length}</div>
+                  <div className="badge-chip">الأسئلة المتخطاة: {skippedCount}</div>
+                  <div className="badge-chip">الدور الحالي: {room.activeTeam===1 ? room.team1.name : room.team2.name}</div>
+                </div>
+              </div>
               {/* Teams */}
               <div className="kc-card">
                 <div className="section-title">الفرق</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem", marginBottom:"0.65rem" }}>
+                  <input className="kc-input" placeholder="اسم الفريق الأزرق" value={room.team1.name} onChange={e=>push({ team1: { ...room.team1, name: e.target.value || "الفريق الأزرق" } })} />
+                  <input className="kc-input" placeholder="اسم الفريق الأحمر" value={room.team2.name} onChange={e=>push({ team2: { ...room.team2, name: e.target.value || "الفريق الأحمر" } })} />
+                </div>
                 <div className="responsive-two-col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem" }}>
                   {([1,2] as const).map(t=>{
                     const team = t===1 ? room.team1 : room.team2;
