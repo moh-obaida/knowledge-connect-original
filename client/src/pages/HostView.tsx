@@ -269,6 +269,11 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 // HOST VIEW
 // ═══════════════════════════════════════════════════════════════
 export default function HostView() {
+  type LocalProfile = { hostName: string; className?: string; orgName?: string };
+  type SavedGame = { id: string; title: string; category: string; questionCount: number; updatedAt: string; source: "custom" | "template" | "imported"; state: RoomState };
+  const PROFILE_KEY = "kc_local_profile";
+  const SESSION_KEY = "kc_local_session";
+  const GAMES_KEY = "kc_saved_games";
   const [room, setRoom] = useState<RoomState | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [creating, setCreating] = useState(false);
@@ -282,11 +287,26 @@ export default function HostView() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateCategory, setTemplateCategory] = useState("");
   const [templateLevel, setTemplateLevel] = useState("");
+  const [appView, setAppView] = useState<"dashboard"|"host"|"templates"|"games"|"results">("dashboard");
+  const [profile, setProfile] = useState<LocalProfile>({ hostName: "", className: "", orgName: "" });
+  const [isLogged, setIsLogged] = useState(false);
+  const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
+  const [searchGame, setSearchGame] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
 
   useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => {
+    const p = localStorage.getItem(PROFILE_KEY);
+    const s = localStorage.getItem(SESSION_KEY);
+    const g = localStorage.getItem(GAMES_KEY);
+    if (p) setProfile(JSON.parse(p));
+    if (s === "1") setIsLogged(true);
+    if (g) setSavedGames(JSON.parse(g));
+  }, []);
+  const persistGames = (next: SavedGame[]) => { setSavedGames(next); localStorage.setItem(GAMES_KEY, JSON.stringify(next)); };
   useEffect(() => {
     try {
       const raw = localStorage.getItem(COMMUNITY_TEMPLATES_KEY);
@@ -769,6 +789,88 @@ export default function HostView() {
     };
     input.click();
   };
+  const saveCurrentGame = () => {
+    if (!room) return;
+    const game: SavedGame = {
+      id: `g_${Date.now()}`,
+      title: room.gameTitle || "لعبة جديدة",
+      category: "عام",
+      questionCount: room.board.filter(c => c.question.trim() || (Array.isArray((c as any).questionBank) && (c as any).questionBank.length)).length,
+      updatedAt: new Date().toISOString(),
+      source: "custom",
+      state: room,
+    };
+    persistGames([game, ...savedGames]);
+    showToast.success("تم حفظ اللعبة محلياً.");
+  };
+  const loadSavedGame = async (g: SavedGame) => {
+    setRoom(g.state);
+    setRoomCode(g.state.roomCode);
+    setAppView("host");
+    showToast.success("تم تحميل اللعبة.");
+  };
+  const duplicateSavedGame = (g: SavedGame) => persistGames([{ ...g, id:`g_${Date.now()}`, title:`${g.title} (نسخة)`, updatedAt:new Date().toISOString() }, ...savedGames]);
+  const deleteSavedGame = (id: string) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذه اللعبة؟")) return;
+    persistGames(savedGames.filter(g=>g.id!==id));
+  };
+  const exportSavedGame = (g: SavedGame) => {
+    const blob = new Blob([JSON.stringify(g, null, 2)], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download=`saved-game-${g.title}.json`; a.click(); URL.revokeObjectURL(url);
+  };
+  const importSavedGame = () => {
+    const input = document.createElement("input"); input.type="file"; input.accept=".json";
+    input.onchange = async e => {
+      try {
+        const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
+        const parsed = JSON.parse(await file.text());
+        if (!parsed?.state?.board) throw new Error();
+        persistGames([{ ...parsed, id:`g_${Date.now()}`, updatedAt:new Date().toISOString(), source:"imported" }, ...savedGames]);
+      } catch { showToast.error("تعذر قراءة القالب. تأكد من أن الملف صحيح."); }
+    };
+    input.click();
+  };
+
+  if (!isLogged) {
+    return (
+      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}>
+        <div className="kc-card" style={{ maxWidth:520, width:"100%" }}>
+          <div style={{ fontSize:"1.8rem", fontWeight:900, color:"#f59e0b", marginBottom:"0.5rem" }}>مرحباً بك!</div>
+          <div style={{ color:"#94a3b8", marginBottom:"1rem" }}>أنشئ ألعاب الحروف، اختر القوالب، واستضف التحدي بطريقة ممتعة.</div>
+          <div style={{ display:"grid", gap:"0.65rem" }}>
+            <input className="kc-input" placeholder="اسم المضيف" value={profile.hostName} onChange={e=>setProfile({ ...profile, hostName:e.target.value })} />
+            <input className="kc-input" placeholder="اسم الصف أو الفعالية" value={profile.className || ""} onChange={e=>setProfile({ ...profile, className:e.target.value })} />
+            <input className="kc-input" placeholder="اسم المدرسة أو الجهة" value={profile.orgName || ""} onChange={e=>setProfile({ ...profile, orgName:e.target.value })} />
+            <button className="btn-gold" onClick={()=>{ if(!profile.hostName.trim()) return showToast.warning("اسم المضيف مطلوب."); localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); localStorage.setItem(SESSION_KEY,"1"); setIsLogged(true); }}>دخول لوحة التحكم</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (appView !== "host") {
+    const filtered = savedGames.filter(g => (!searchGame || g.title.includes(searchGame)) && (!filterCategory || g.category === filterCategory));
+    return (
+      <div className="container" style={{ paddingTop:"1.5rem", paddingBottom:"2rem" }}>
+        <div className="kc-card" style={{ marginBottom:"1rem" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem" }}>
+            <div><div style={{ fontSize:"1.4rem", fontWeight:900, color:"#f59e0b" }}>لوحة التحكم</div><div style={{ color:"#94a3b8" }}>مرحباً {profile.hostName}</div></div>
+            <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
+              <button className="btn-secondary" onClick={()=>setAppView("games")}>ألعابي</button>
+              <button className="btn-secondary" onClick={()=>setAppView("templates")}>عرض القوالب</button>
+              <button className="btn-gold" onClick={()=>{ setAppView("host"); if(!room) handleCreate(); }}>بدء الاستضافة</button>
+              <button className="btn-danger" onClick={()=>{ localStorage.removeItem(SESSION_KEY); setIsLogged(false); }}>الخروج</button>
+            </div>
+          </div>
+        </div>
+        {appView === "dashboard" && <div className="kc-card"> <div className="section-title">إجراءات سريعة</div><div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}><button className="btn-gold" onClick={()=>{setAppView("host"); if(!room) handleCreate();}}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setAppView("templates")}>اختيار قالب</button><button className="btn-secondary" onClick={()=>setAppView("games")}>ألعابي</button><button className="btn-secondary" onClick={()=>setAppView("results")}>آخر النتائج</button></div></div>}
+        {appView === "templates" && <div className="kc-card"><div className="section-title">قوالب الألعاب</div><div style={{color:"#94a3b8"}}>انتقل إلى وضع الاستضافة ثم افتح تبويب الإعداد لاستخدام القوالب.</div><button className="btn-gold" style={{marginTop:"0.75rem"}} onClick={()=>{ setAppView("host"); if(!room) handleCreate(); setActiveTab("setup"); }}>فتح القوالب</button></div>}
+        {appView === "results" && <div className="kc-card"><div className="section-title">آخر النتائج</div><div style={{color:"#94a3b8"}}>{savedGames.length ? "ستظهر النتائج من الألعاب المحفوظة محلياً." : "لا توجد نتائج بعد."}</div></div>}
+        {appView === "games" && <div className="kc-card"><div className="section-title">ألعابي</div><div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap",marginBottom:"0.75rem"}}><input className="kc-input" style={{maxWidth:240}} placeholder="ابحث باسم اللعبة..." value={searchGame} onChange={e=>setSearchGame(e.target.value)} /><input className="kc-input" style={{maxWidth:180}} placeholder="التصنيف" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)} /><button className="btn-secondary" onClick={importSavedGame}>استيراد</button></div>{!filtered.length ? <div style={{color:"#94a3b8"}}>لا توجد ألعاب محفوظة بعد. أنشئ لعبة جديدة أو استخدم أحد القوالب.</div> : <div style={{display:"grid",gap:"0.5rem"}}>{filtered.map(g=><div key={g.id} style={{background:"#141e2d",border:"1px solid #1a2332",borderRadius:"12px",padding:"0.75rem"}}><div style={{fontWeight:800,color:"#f0ede8"}}>{g.title}</div><div style={{fontSize:"0.78rem",color:"#94a3b8"}}>عدد الأسئلة: {g.questionCount} • آخر تعديل: {new Date(g.updatedAt).toLocaleDateString("ar")} • المصدر: {g.source}</div><div style={{display:"flex",gap:"0.4rem",flexWrap:"wrap",marginTop:"0.5rem"}}><button className="btn-gold" onClick={()=>loadSavedGame(g)}>تشغيل</button><button className="btn-secondary" onClick={()=>loadSavedGame(g)}>تعديل</button><button className="btn-secondary" onClick={()=>duplicateSavedGame(g)}>نسخ</button><button className="btn-secondary" onClick={()=>exportSavedGame(g)}>تصدير</button><button className="btn-danger" onClick={()=>deleteSavedGame(g.id)}>حذف</button></div></div>)}</div>}</div>}
+      </div>
+    );
+  }
 
   // ── Firebase not configured ──
   if (!isFirebaseConfigured()) {
@@ -904,6 +1006,8 @@ export default function HostView() {
             </div>
             <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
               {room.gameStatus==="lobby" && <button className="btn-gold" style={{ fontSize:"0.8rem" }} onClick={startGame}>▶ بدء اللعبة</button>}
+              <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={saveCurrentGame}>💾 حفظ اللعبة</button>
+              <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>setAppView("dashboard")}>🏠 لوحة التحكم</button>
               <button className="btn-danger" style={{ fontSize:"0.8rem" }} onClick={resetGame}>↺ إعادة اللعب</button>
             </div>
           </div>
