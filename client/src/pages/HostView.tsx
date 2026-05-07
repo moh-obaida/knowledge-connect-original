@@ -962,19 +962,33 @@ export default function HostView() {
 
   if (!isLogged) {
     return (
-      <div style={{ minHeight:"100vh", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))", gap:"1rem", alignItems:"center", padding:"1rem", background:"radial-gradient(circle at top,#17253a 0%,#090d18 60%)" }}>
+      <div style={{ minHeight:"100vh", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))", gap:"1rem", alignItems:"start", padding:"1rem", background:"radial-gradient(circle at top,#17253a 0%,#090d18 60%)" }}>
         <div className="kc-card" style={{ minHeight:300 }}>
           <div style={{ fontSize:"2rem", fontWeight:900, color:"#f59e0b", marginBottom:"0.45rem" }}>وصلة المعرفة</div>
+          <div style={{ fontSize:"2rem", fontWeight:900, color:"#f0ede8", marginBottom:"0.5rem" }}>حوّل المراجعة إلى تحدي ممتع</div>
           <div style={{ color:"#cbd5e1", fontWeight:700, marginBottom:"0.35rem" }}>منصة تحديات تعليمية تفاعلية للمضيفين والمعلمين</div>
-          <div style={{ color:"#94a3b8", marginBottom:"1rem" }}>أنشئ ألعاباً تعليمية، اختر القوالب، واستضف التحديات بطريقة ممتعة وسهلة.</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem" }}>
-            {["قوالب جاهزة","لوحة تحكم للمضيف","وضع عرض للفصل","نتائج محفوظة محلياً","ألعاب قابلة للتخصيص"].map(x=><div key={x} className="badge-chip">{x}</div>)}
+          <div style={{ color:"#94a3b8", marginBottom:"1rem" }}>أنشئ ألعاباً تعليمية، اختر القوالب، واستضف التحديات الصفية بطريقة سهلة وممتعة.</div>
+          <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.8rem" }}>
+            <button className="btn-gold" onClick={()=>document.getElementById("host-name-input")?.focus()}>ابدأ الآن</button>
+            <button className="btn-secondary" onClick={()=>{ const quick={ hostName:"مضيف", className:"", orgName:"" }; setProfile(quick); localStorage.setItem(PROFILE_KEY, JSON.stringify(quick)); localStorage.setItem(SESSION_KEY,"1"); setIsLogged(true); }}>جرّب قالباً جاهزاً</button>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.5rem", marginBottom:"0.8rem" }}>
+            {["قوالب جاهزة","لوحة تحكم للمضيف","وضع عرض للفصل","نتائج محفوظة محلياً","ألعاب قابلة للتخصيص","تحديات فرق ممتعة"].map(x=><div key={x} className="badge-chip">{x}</div>)}
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:"0.5rem" }}>
+            <div style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.5rem", fontSize:"0.78rem", color:"#94a3b8" }}>لوحة مصغرة<br/><span style={{ color:"#f0ede8" }}>◉ ◉ ◉ ◉ ◉</span></div>
+            <div style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.5rem", fontSize:"0.78rem", color:"#94a3b8" }}>الفِرَق<br/><span style={{ color:"#60a5fa" }}>الأزرق</span> • <span style={{ color:"#f87171" }}>الأحمر</span></div>
+            <div style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.5rem", fontSize:"0.78rem", color:"#94a3b8" }}>قالب جاهز<br/><span style={{ color:"#f0ede8" }}>قالب العلوم</span></div>
+            <div style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.5rem", fontSize:"0.78rem", color:"#94a3b8" }}>نتيجة<br/><span style={{ color:"#f0ede8" }}>فاز الفريق الأزرق</span></div>
+          </div>
+          <div style={{ marginTop:"0.9rem", display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
+            {["المعلمون","المضيفون","الأهالي","قادة الأنشطة","الطلاب"].map(x=><span key={x} className="badge-chip">{x}</span>)}
           </div>
         </div>
         <div className="kc-card" style={{ maxWidth:520, width:"100%", justifySelf:"center" }}>
           <div style={{ fontSize:"1.5rem", fontWeight:900, color:"#f59e0b", marginBottom:"0.7rem" }}>دخول المضيف</div>
           <div style={{ display:"grid", gap:"0.65rem" }}>
-            <input className="kc-input" placeholder="اسم المضيف" value={profile.hostName} onChange={e=>setProfile({ ...profile, hostName:e.target.value })} />
+            <input id="host-name-input" className="kc-input" placeholder="اسم المضيف" value={profile.hostName} onChange={e=>setProfile({ ...profile, hostName:e.target.value })} />
             <input className="kc-input" placeholder="اسم الصف أو الفعالية" value={profile.className || ""} onChange={e=>setProfile({ ...profile, className:e.target.value })} />
             <input className="kc-input" placeholder="اسم المدرسة أو الجهة" value={profile.orgName || ""} onChange={e=>setProfile({ ...profile, orgName:e.target.value })} />
             <button className="btn-gold" onClick={()=>{ if(!profile.hostName.trim()) return showToast.warning("يرجى إدخال اسم المضيف."); localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); localStorage.setItem(SESSION_KEY,"1"); setIsLogged(true); }}>دخول لوحة التحكم</button>
