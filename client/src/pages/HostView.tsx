@@ -941,6 +941,30 @@ export default function HostView() {
 
         {/* ══ TAB: Setup ══ */}
         {activeTab==="setup" && (
+          <div style={{ display:"grid", gap:"1.1rem" }}>
+            <div className="kc-card" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))", gap:"0.75rem" }}>
+              <div>
+                <div style={{ fontWeight:800, color:"#f0ede8" }}>مرحباً {hostProfile.hostName || "بك"} 👋</div>
+                <div style={{ fontSize:"0.84rem", color:"#94a3b8", marginTop:"0.25rem" }}>أنشئ تحدياً جديداً، استخدم قالباً جاهزاً، أو تابع آخر لعبة محفوظة.</div>
+              </div>
+              {[
+                { label:"عدد الألعاب المحفوظة", val:String(communityTemplates.filter(t=>t.userCreated).length) },
+                { label:"عدد القوالب المتاحة", val:String(STARTER_TEMPLATES.length + communityTemplates.length) },
+                { label:"عدد النتائج المحفوظة", val:"0" },
+                { label:"آخر لعبة", val:room.gameTitle || "—" },
+              ].map((s)=>(
+                <div key={s.label} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.55rem 0.7rem" }}>
+                  <div style={{ fontSize:"0.74rem", color:"#94a3b8" }}>{s.label}</div>
+                  <div style={{ fontSize:"0.92rem", fontWeight:800, color:"#f0ede8", marginTop:"0.15rem" }}>{s.val}</div>
+                </div>
+              ))}
+              <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap", alignItems:"center" }}>
+                <button className="btn-gold" style={{ fontSize:"0.8rem" }} onClick={handleCreate}>إنشاء لعبة جديدة</button>
+                <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>setActiveTab("game")}>بدء الاستضافة</button>
+                <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>setTemplateSearch("")}>استكشاف القوالب</button>
+                <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={importBoard}>استيراد لعبة</button>
+              </div>
+            </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.25rem" }}>
             {/* Board */}
             <div className="kc-card">
@@ -1060,6 +1084,7 @@ export default function HostView() {
                 );})}
               </div>
             </div>
+          </div>
           </div>
         )}
 

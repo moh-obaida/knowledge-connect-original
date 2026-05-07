@@ -57,6 +57,26 @@ export default function Home() {
             <div style={{ marginTop:"0.7rem", color:"#94a3b8", fontSize:"0.78rem", textAlign:"center" }}>تجربة محلية: تُحفظ البيانات على هذا الجهاز فقط.</div>
           </div>
         </div>
+        <div style={{ marginTop:"1rem", display:"grid", gap:"0.8rem" }}>
+          <div className="kc-card">
+            <div className="section-title">كيف تعمل المنصة؟</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:"0.55rem" }}>
+              {["1) اختر قالباً أو أنشئ لعبة جديدة","2) أضف الأسئلة أو استخدم نموذجاً جاهزاً","3) ابدأ الاستضافة وشارك التحدي","4) تابع النتائج وتفاعل الطلاب"].map((step)=>(
+                <div key={step} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.6rem", color:"#cbd5e1", fontSize:"0.84rem" }}>{step}</div>
+              ))}
+            </div>
+          </div>
+          <div className="kc-card" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.65rem" }}>
+            <div>
+              <div style={{ fontWeight:800, color:"#f0ede8" }}>جاهز لبدء أول تحدٍ؟</div>
+              <div style={{ color:"#94a3b8", fontSize:"0.84rem" }}>فئات مقترحة: اللغة العربية • التربية الإسلامية • العلوم • الرياضيات • الحروف الأساسية</div>
+            </div>
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+              <button className="btn-gold" onClick={goHost}>ابدأ الآن</button>
+              <button className="btn-secondary" onClick={()=>{ localStorage.setItem("kc_open_templates","1"); goHost(); }}>عرض القوالب</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
