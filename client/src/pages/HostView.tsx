@@ -336,7 +336,7 @@ export default function HostView() {
   const [skippedCount, setSkippedCount] = useState(0);
   const [timerCustom, setTimerCustom] = useState(45);
   const [winningPathIds, setWinningPathIds] = useState<string[]>([]);
-  const [appearance, setAppearance] = useState<"dark"|"light"|"mid">("dark");
+  const [appearance, setAppearance] = useState<"dark"|"light"|"soft"|"contrast">("dark");
   const unsubRef = useRef<(()=>void)|null>(null);
   const roomRef = useRef<RoomState|null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -370,7 +370,8 @@ export default function HostView() {
       }
     }
     const ap = localStorage.getItem("kc_appearance");
-    if (ap === "dark" || ap === "light" || ap === "mid") setAppearance(ap);
+    if (ap === "mid") setAppearance("soft");
+    if (ap === "dark" || ap === "light" || ap === "soft" || ap === "contrast") setAppearance(ap);
     if (localStorage.getItem("kc_open_templates") === "1") {
       setAppView("templates");
       localStorage.removeItem("kc_open_templates");
@@ -383,8 +384,11 @@ export default function HostView() {
   }, []);
   const persistGames = (next: SavedGame[]) => { setSavedGames(next); localStorage.setItem(GAMES_KEY, JSON.stringify(next)); };
   const persistResults = (next: GameResult[]) => { setResults(next); localStorage.setItem(RESULTS_KEY, JSON.stringify(next)); };
-  const appearanceBg = appearance === "light" ? "#f8fafc" : appearance === "mid" ? "#111827" : "#090d18";
-  useEffect(() => {
+  const deleteResult = (id: string) => persistResults(results.filter(r => r.id !== id));
+  const appearanceBg = appearance === "light" ? "#f8fafc" : appearance === "soft" ? "#141b2d" : appearance === "contrast" ? "#000" : "#090d18";
+    : appearance === "soft"
+    : appearance === "contrast"
+    ? `radial-gradient(circle at top, #ffffff22 0%, #000 62%)`
     try {
       const raw = localStorage.getItem(COMMUNITY_TEMPLATES_KEY);
       if (!raw) return;
@@ -1020,8 +1024,9 @@ export default function HostView() {
     const categoryOptions = Array.from(new Set(savedGames.map(g => g.category)));
     const suggestedTemplates = [...STARTER_TEMPLATES, ...DEMO_COMMUNITY_TEMPLATES, ...communityTemplates].slice(0, 4);
     return (
-      <div className="container" style={{ paddingTop:"1.5rem", paddingBottom:"2rem", background:appearanceBg, minHeight:"100vh" }}>
-        <div className="kc-card" style={{ marginBottom:"1rem" }}>
+              <button className="btn-secondary" onClick={()=>{ setAppearance("soft"); localStorage.setItem("kc_appearance","soft"); }}>ناعم</button>
+              <button className="btn-secondary" onClick={()=>{ setAppearance("contrast"); localStorage.setItem("kc_appearance","contrast"); }}>تباين عالٍ</button>
+          <div style={{marginBottom:"0.8rem"}}><div style={{fontWeight:700,color:"#cbd5e1",marginBottom:"0.3rem"}}>المظهر</div><div style={{display:"flex",gap:"0.4rem",flexWrap:"wrap"}}><button className="btn-secondary" onClick={()=>{ setAppearance("light"); localStorage.setItem("kc_appearance","light"); }}>الوضع الفاتح</button><button className="btn-secondary" onClick={()=>{ setAppearance("soft"); localStorage.setItem("kc_appearance","soft"); }}>الوضع الناعم</button><button className="btn-secondary" onClick={()=>{ setAppearance("dark"); localStorage.setItem("kc_appearance","dark"); }}>الوضع الداكن</button><button className="btn-secondary" onClick={()=>{ setAppearance("contrast"); localStorage.setItem("kc_appearance","contrast"); }}>تباين عالٍ</button></div></div>
           <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem" }}>
             <div><div style={{ fontSize:"1.4rem", fontWeight:900, color:"#f59e0b" }}>وصلة المعرفة • لوحة التحكم</div><div style={{ color:"#94a3b8" }}>مرحباً، {profile.hostName}{profile.className ? ` • الصف/الفعالية: ${profile.className}` : ""}{profile.orgName ? ` • الجهة: ${profile.orgName}` : ""}</div></div>
             <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", alignItems:"center" }}>
