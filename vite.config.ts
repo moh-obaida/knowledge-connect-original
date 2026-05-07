@@ -219,6 +219,10 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // Non-blocking deployment polish: current app bundle is expected to exceed
+    // Vite's default 500kB warning threshold. Raise warning limit to reduce
+    // noisy build output without changing runtime behavior.
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port: 3000,
