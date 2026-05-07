@@ -14,6 +14,7 @@ export default function Home() {
             <button className="btn-gold" onClick={()=>setLocation("/join")}>ابدأ اللعب</button>
             <button className="btn-secondary" onClick={()=>setLocation("/host")}>إنشاء لعبة</button>
             <button className="btn-secondary" onClick={()=>{ localStorage.setItem("kc_open_templates","1"); setLocation("/host"); }}>استكشف القوالب</button>
+            <button className="btn-secondary" onClick={()=>setLocation("/classroom")}>Classroom Mode (Prototype)</button>
           </div>
           <div style={{ marginTop:"1rem", color:"#94a3b8", fontSize:"0.9rem", textAlign:"center" }}>لا حاجة لتسجيل دخول — كل شيء يعمل محلياً على جهازك.</div>
         </div>
