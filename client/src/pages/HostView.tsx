@@ -332,6 +332,12 @@ export default function HostView() {
   }, [room?.timerRunning]);
 
   const confirm = (msg: string, action: ()=>void) => { setConfirmMsg(msg); setConfirmAction(()=>action); };
+  const cellHasQuestions = (cell: BoardCell) => {
+    const bank = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank : [];
+    if (bank.some((q:any)=>String(q?.question||"").trim())) return true;
+    return !!cell.question.trim();
+  };
+
   const push = useCallback(async (updates: Partial<RoomState>) => {
     if (!roomCode) return;
     try { await updateRoom(roomCode, updates); }
@@ -357,10 +363,11 @@ export default function HostView() {
   // Cell click
   const handleCellClick = (cell: BoardCell) => {
     if (!room) return;
+    if (room.winnerTeam !== 0 || room.gameStatus === "finished") { showToast.info("انتهت اللعبة. ابدأ جولة جديدة."); return; }
     if (room.gameStatus === "lobby" || activeTab === "setup") {
       setEditingCell(cell);
     } else {
-      if (!cell.question.trim()) { showToast.warning("لا يوجد سؤال محفوظ لهذا الحرف بعد."); return; }
+      if (!cellHasQuestions(cell)) { showToast.warning("لا يوجد سؤال مرتبط بهذا الحرف حالياً."); return; }
       if (cell.claimedBy !== 0) { showToast.info("هذا الحرف محجوز بالفعل."); return; }
       const bank = Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank : [{ question: cell.question, answer: cell.answer, category: cell.category, difficulty: cell.difficulty, points: cell.points, hint: cell.hint, explanation: cell.explanation }];
       const first = bank[0];
@@ -389,7 +396,10 @@ export default function HostView() {
 
   // Claim cell
   const claimCell = async (cellId: string) => {
-    if (!room) return;
+    if (!room || answerActionBusy) return;
+    const current = room.board.find(c => c.id===cellId);
+    if (!current || current.claimedBy !== 0 || current.used || room.gameStatus === "finished") return;
+    setAnswerActionBusy(true);
     const nb = room.board.map(c => c.id===cellId ? {...c, claimedBy: room.activeTeam as 0|1|2, used:true} : c);
     const pts = room.activeQuestion?.points || 1;
     const scoreUp = room.activeTeam===1 ? { team1Score: room.team1Score+pts } : { team2Score: room.team2Score+pts };
@@ -399,9 +409,10 @@ export default function HostView() {
       winnerMessage: winMsg, winnerTeam: winner,
       gameStatus: winMsg ? "finished" : room.gameStatus });
     if (winMsg) showToast.success(winMsg);
+    setAnswerActionBusy(false);
   };
 
-  const markCorrect = () => { if (room?.activeQuestion) claimCell(room.activeQuestion.cellId); };
+  const markCorrect = () => { if (room?.activeQuestion && !answerActionBusy) claimCell(room.activeQuestion.cellId); };
   const markWrong = async () => {
     if (!room) return;
     await push({ questionStatus:"wrong" });
@@ -432,7 +443,8 @@ export default function HostView() {
     await push({ activeQuestion:null, selectedCellId:"", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false, questionStatus:"idle", timerRunning:false });
   };
   const skipQ = async () => {
-    if (!room) return;
+    if (!room || answerActionBusy) return;
+    setAnswerActionBusy(true);
     const cell = room.board.find(c=>c.id===room.activeQuestion?.cellId);
     const bank = cell ? (Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank : (cell.question ? [{ question:cell.question, answer:cell.answer, category:cell.category, difficulty:cell.difficulty, points:cell.points, hint:cell.hint, explanation:cell.explanation }] : [])) : [];
     if (room.activeQuestion && bank.length > 1) {
@@ -444,10 +456,12 @@ export default function HostView() {
           answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
           questionStatus:"skipped", timerRunning:false, timerValue: room.timerSetting,
         });
+        setAnswerActionBusy(false);
         return;
       }
     }
     await push({ activeQuestion:null, selectedCellId:"", questionStatus:"skipped", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
+    setAnswerActionBusy(false);
   };
 
   const startTimer = () => push({ timerRunning:true });
@@ -466,7 +480,9 @@ export default function HostView() {
 
   const startGame = async () => {
     if (!room) return;
-    const empty = room.board.filter(c=>!c.question.trim()).length;
+    const withQuestions = room.board.filter(c=>cellHasQuestions(c)).length;
+    if (withQuestions===0) { showToast.warning("لا توجد أسئلة بعد. أضف أسئلة من صفحة الإنشاء."); return; }
+    const empty = room.board.filter(c=>!cellHasQuestions(c)).length;
     if (empty>0) {
       confirm(`بعض الحروف لا تحتوي على أسئلة (${empty} حرف). هل تريد المتابعة؟`,
         async () => { await push({ gameStatus:"active" }); setActiveTab("game"); });
