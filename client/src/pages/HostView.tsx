@@ -15,6 +15,8 @@ import HexBoard from "../components/HexBoard";
 import { showToast } from "../components/KcToast";
 import { normalizeQuestion, validateQuestion } from "../lib/questionTypes";
 import { checkAnswer } from "../lib/questionTypes";
+import HostDashboardHeader from "../components/host/HostDashboardHeader";
+import TemplatePreviewModal from "../components/host/TemplatePreviewModal";
 
 // ── URL helpers ───────────────────────────────────────────────
 const BASE_URL = (import.meta.env.VITE_PUBLIC_APP_URL as string) || window.location.origin;
@@ -873,29 +875,7 @@ export default function HostView() {
       )}
       {editingCell && <CellEditor cell={editingCell} onSave={saveCellQ} onClose={()=>setEditingCell(null)} />}
       {previewTemplate && (
-        <div className="modal-overlay" onClick={()=>setPreviewTemplate(null)}>
-          <div className="modal-box" style={{ maxWidth: 560 }} onClick={e=>e.stopPropagation()}>
-            <div style={{ fontWeight:800, color:"#f59e0b", marginBottom:"0.45rem" }}>معاينة</div>
-            <div style={{ fontWeight:700, color:"#f0ede8", marginBottom:"0.35rem" }}>{previewTemplate.name}</div>
-            <div style={{ fontSize:"0.8rem", color:"#94a3b8", marginBottom:"0.8rem" }}>
-              التصنيف: {previewTemplate.categories.join("، ")} • المستوى: {previewTemplate.level} • عدد الأسئلة الإجمالي: {previewTemplate.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || previewTemplate.questions.length} • عدد الحروف: {previewTemplate.boardBanks?.filter(b=>b.questionBank?.length).length || 0}
-            </div>
-            {previewTemplate.boardBanks && previewTemplate.boardBanks.length > 0 && (
-              <div style={{ fontSize:"0.75rem", color:"#64748b", marginBottom:"0.55rem" }}>
-                {previewTemplate.boardBanks.filter(b=>b.questionBank?.length).slice(0,6).map(b=>`${b.label}: ${b.questionBank.length}`).join(" • ")}
-              </div>
-            )}
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.35rem", marginBottom:"0.8rem" }}>
-              {(previewTemplate.boardBanks?.flatMap(b=>b.questionBank.map((q:any)=>q)) || previewTemplate.questions.map((q:any)=>({ question:q, type:"fill" }))).slice(0,5).map((q:any, i)=>(
-                <div key={i} style={{ fontSize:"0.86rem", color:"#f0ede8" }}>• [{q.type || "fill"}] {q.question || q.prompt || "—"}</div>
-              ))}
-            </div>
-            {(previewTemplate.boardBanks?.flatMap(b=>b.questionBank||[]) || []).some((q:any)=>q.type==="image" && !q.imageUrl) && (
-              <div style={{ fontSize:"0.78rem", color:"#f59e0b", marginBottom:"0.6rem" }}>This image question has no image yet, so a placeholder will be shown.</div>
-            )}
-            <button className="btn-secondary" onClick={()=>setPreviewTemplate(null)}>رجوع</button>
-          </div>
-        </div>
+        <TemplatePreviewModal previewTemplate={previewTemplate as any} onClose={()=>setPreviewTemplate(null)} />
       )}
 
       {/* Winner overlay */}
@@ -925,53 +905,21 @@ export default function HostView() {
       )}
 
       {/* Header */}
-      <div style={{ background:"#0f1623", borderBottom:"1.5px solid #1a2332", padding:"0.75rem 1.25rem" }}>
-        <div style={{ maxWidth:1400, margin:"0 auto" }}>
-          {/* Top row */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.5rem" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"1rem", flexWrap:"wrap" }}>
-              <div style={{ fontWeight:900, fontSize:"1.3rem", color:"#f59e0b" }}>وصلة المعرفة</div>
-              <span style={{ fontSize:"0.8rem", color:"#cbd5e1" }}>لوحة التحكم</span>
-              {hostProfile.hostName && <span style={{ fontSize:"0.78rem", color:"#94a3b8" }}>مرحباً، {hostProfile.hostName}</span>}
-              {hostProfile.className && <span style={{ fontSize:"0.72rem", color:"#64748b" }}>الصف/الفعالية: {hostProfile.className}</span>}
-              {hostProfile.orgName && <span style={{ fontSize:"0.72rem", color:"#64748b" }}>الجهة: {hostProfile.orgName}</span>}
-              <div style={{ display:"flex", alignItems:"center", gap:"0.4rem" }}>
-                <span style={{ fontSize:"0.75rem", color:"#64748b" }}>رمز الغرفة:</span>
-                <span style={{ fontWeight:900, fontSize:"1.2rem", color:"#f0ede8", letterSpacing:"0.15em", background:"#1a2332", padding:"0.2rem 0.75rem", borderRadius:"8px", cursor:"pointer" }}
-                  onClick={()=>copyText(roomCode, "رمز الغرفة")} title="انقر للنسخ">
-                  {roomCode}
-                </span>
-              </div>
-              <span style={{ fontSize:"0.7rem", padding:"0.2rem 0.6rem", borderRadius:"9999px", fontWeight:600,
-                background: room.gameStatus==="active" ? "rgba(22,163,74,0.2)" : room.gameStatus==="finished" ? "rgba(239,68,68,0.2)" : "rgba(245,158,11,0.2)",
-                color: room.gameStatus==="active" ? "#22c55e" : room.gameStatus==="finished" ? "#ef4444" : "#f59e0b" }}>
-                {room.gameStatus==="lobby" ? "انتظار" : room.gameStatus==="active" ? `جارية • الجولة ${room.roundNumber}` : "منتهية"}
-              </span>
-              <span style={{ fontSize:"0.7rem", padding:"0.2rem 0.5rem", borderRadius:"6px", background:"#1a2332", color:"#64748b" }}>
-                🏷 لوحة تحكم المضيف
-              </span>
-            </div>
-            <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
-              <select className="kc-input" style={{ fontSize:"0.75rem", maxWidth:120 }} value={appearanceMode} onChange={e=>setAppearanceMode(e.target.value as any)}>
-                <option value="light">فاتح</option><option value="balanced">متوازن</option><option value="dark">داكن</option>
-              </select>
-              <select className="kc-input" style={{ fontSize:"0.75rem", maxWidth:120 }} value={visualTheme} onChange={e=>setVisualTheme(e.target.value)}>
-                <option value="classic">كلاسيكي</option><option value="school">مدرسي</option><option value="space">فضاء</option><option value="ramadan">رمضان</option><option value="science">علوم</option><option value="vivid">ألوان زاهية</option>
-              </select>
-              {room.gameStatus==="lobby" && <button className="btn-gold" style={{ fontSize:"0.8rem" }} onClick={startGame}>▶ بدء اللعبة</button>}
-              <button className="btn-danger" style={{ fontSize:"0.8rem" }} onClick={resetGame}>↺ إعادة الضبط</button>
-              <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>{ localStorage.removeItem("kc_host_profile"); setLocation("/"); }}>الخروج</button>
-            </div>
-          </div>
-          {/* Link row */}
-          <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
-            <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>copyText(joinLink(roomCode),"رابط الانضمام")}>📋 نسخ رابط الانضمام</button>
-            <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>window.open(`/join?room=${roomCode}`,"_blank")}>🔗 فتح صفحة الانضمام</button>
-            <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>copyText(displayLink(roomCode),"رابط شاشة العرض")}>📺 نسخ رابط شاشة العرض</button>
-            <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>window.open(`/participant?room=${roomCode}`,"_blank")}>🖥 فتح شاشة العرض</button>
-          </div>
-        </div>
-      </div>
+      <HostDashboardHeader
+        room={room}
+        roomCode={roomCode}
+        hostProfile={hostProfile}
+        appearanceMode={appearanceMode}
+        setAppearanceMode={setAppearanceMode}
+        visualTheme={visualTheme}
+        setVisualTheme={setVisualTheme}
+        startGame={startGame}
+        resetGame={resetGame}
+        onLogout={()=>{ localStorage.removeItem("kc_host_profile"); setLocation("/"); }}
+        copyText={copyText}
+        joinLink={joinLink(roomCode)}
+        displayLink={displayLink(roomCode)}
+      />
 
       {/* Tabs */}
       <div style={{ background:"#0f1623", borderBottom:"1.5px solid #1a2332", padding:"0 1.25rem" }}>
