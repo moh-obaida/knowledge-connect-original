@@ -23,6 +23,7 @@ export default function HexBoard({
   const verticalOverlap = cellSize * 0.28;
   const rowOffset = cellSize * 0.48;
   const rows = Array.from({ length: safeGrid }, (_, row) => sorted.slice(row * safeGrid, row * safeGrid + safeGrid));
+  const motionReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   return (
     <div style={{ position: "relative", padding: "8px", width: "100%", overflowX: "hidden" }}>
@@ -35,7 +36,7 @@ export default function HexBoard({
         </>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "100%", paddingBottom: "6px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: `${-verticalOverlap}px`, direction: "ltr", alignItems: "center", width: "100%", maxWidth: "100%", paddingBottom: "6px" }}>
         {rows.map((rowCells, row) => (
           <div key={`row-${row}`} style={{ display: "grid", gridTemplateColumns: `repeat(${safeGrid}, ${cellSize}px)`, columnGap: `${-cellSize * 0.04}px`, marginInlineStart: row % 2 === 1 ? `${rowOffset}px` : 0 }}>
             {rowCells.map((cell) => {
@@ -61,12 +62,12 @@ export default function HexBoard({
               const clickable = !!onCellClick && (mode === "setup" || (mode === "host-game" && cell.claimedBy === 0 && !cell.used));
 
               return (
-                <div key={cell.id} onClick={() => clickable && onCellClick?.(cell)}
-                  style={{ width: cellSize, height: cellSize, clipPath: HEX_CLIP, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", cursor: clickable ? "pointer" : "default", transition: "all 0.2s ease", boxShadow: shadow, outline: border, outlineOffset: "-2px", animation: isSelected ? "hexGlow 1.5s ease-in-out infinite" : "none", userSelect: "none" }}>
+                <button key={cell.id} onClick={() => clickable && onCellClick?.(cell)} type="button" aria-label={`خلية ${cell.label}${claimed1 ? ` للفريق ${team1.name}` : claimed2 ? ` للفريق ${team2.name}` : ""}`}
+                  style={{ width: cellSize, height: cellSize, clipPath: HEX_CLIP, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", cursor: clickable ? "pointer" : "default", transition: motionReduced ? "none" : "all 0.2s ease", boxShadow: shadow, outline: border, outlineOffset: "-2px", animation: isSelected && !motionReduced ? "hexGlow 1.5s ease-in-out infinite" : "none", userSelect: "none", border: "none", padding: 0 }}>
                   <span style={{ fontWeight: 900, fontSize: cellSize * 0.36, color: textColor, fontFamily: "Cairo,sans-serif", lineHeight: 1 }}>{cell.label}</span>
                   {mode === "setup" && !claimed1 && !claimed2 && <span style={{ fontSize: cellSize * 0.17, color: hasQ ? "#22c55e" : "#ef4444", lineHeight: 1, marginTop: 2 }}>{hasQ ? "✓" : "!"}</span>}
-                  {(claimed1 || claimed2) && <span style={{ fontSize: cellSize * 0.19, color: "rgba(255,255,255,0.75)", lineHeight: 1, fontWeight: 700 }}>{claimed1 ? team1.initials : team2.initials}</span>}
-                </div>
+                  {(claimed1 || claimed2) && <span style={{ fontSize: cellSize * 0.22, color: "rgba(255,255,255,0.9)", lineHeight: 1, fontWeight: 800 }}>{claimed1 ? "◆" : "●"}</span>}
+                </button>
               );
             })}
           </div>
