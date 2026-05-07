@@ -11,6 +11,7 @@ import {
 } from "../lib/store";
 import HexBoard from "../components/HexBoard";
 import { showToast } from "../components/KcToast";
+import { safeLoad, safeRemove, safeSave } from "../lib/localData";
 
 // ── URL helpers ───────────────────────────────────────────────
 const BASE_URL = (import.meta.env.VITE_PUBLIC_APP_URL as string) || window.location.origin;
@@ -187,6 +188,8 @@ type TemplateQuestionItem = {
   explanation?: string;
 };
 const COMMUNITY_TEMPLATES_KEY = "knowledgeConnectCommunityTemplates";
+const LAST_TEMPLATE_KEY = "kc_last_template";
+const FAV_TEMPLATES_KEY = "kc_fav_templates";
 const ARABIC_LETTERS_FULL = ["أ","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ع","غ","ف","ق","ك","ل","م","ن","هـ","و","ي"];
 const LETTER_WORDS: Record<string, string[]> = {
   "أ":["أمل","أدب","أفق"],"ب":["بدر","بيت","باب"],"ت":["تفاح","تعاون","تاريخ"],"ث":["ثعلب","ثقة","ثواب"],"ج":["جبل","جوال","جائزة"],"ح":["حكمة","حياة","حب"],
@@ -326,6 +329,7 @@ export default function HostView() {
   const [templateCategory, setTemplateCategory] = useState("");
   const [templateLevel, setTemplateLevel] = useState("");
   const [templateSort, setTemplateSort] = useState<"newest"|"title"|"questions"|"difficulty">("newest");
+  const [favTemplateIds, setFavTemplateIds] = useState<string[]>([]);
   const [questionSearch, setQuestionSearch] = useState("");
   const [questionCategoryFilter, setQuestionCategoryFilter] = useState("");
   const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState<""|"easy"|"medium"|"hard">("");
@@ -397,10 +401,16 @@ export default function HostView() {
       const parsed = JSON.parse(rr);
       if (Array.isArray(parsed)) setResults(parsed);
     }
+    setFavTemplateIds(safeLoad<string[]>(FAV_TEMPLATES_KEY, []));
   }, []);
   const persistGames = (next: SavedGame[]) => { setSavedGames(next); localStorage.setItem(GAMES_KEY, JSON.stringify(next)); };
   const persistResults = (next: GameResult[]) => { setResults(next); localStorage.setItem(RESULTS_KEY, JSON.stringify(next)); };
   const deleteResult = (id: string) => persistResults(results.filter(r => r.id !== id));
+  const toggleFavoriteTemplate = (id: string) => {
+    const next = favTemplateIds.includes(id) ? favTemplateIds.filter(x => x !== id) : [...favTemplateIds, id];
+    setFavTemplateIds(next);
+    safeSave(FAV_TEMPLATES_KEY, next);
+  };
   const appearanceBg = appearance === "light" ? "#f8fafc" : appearance === "soft" ? "#141b2d" : appearance === "contrast" ? "#000" : "#090d18";
     : appearance === "soft"
     : appearance === "contrast"
@@ -812,6 +822,7 @@ export default function HostView() {
         };
       });
       await push({ board: nextBoard });
+      safeSave(LAST_TEMPLATE_KEY, tpl);
       if (skipped > 0) showToast.warning("تم تجاهل بعض الأسئلة لأنها لا تطابق الحروف المحددة.");
       showToast.success("تم تحميل القالب بنجاح.");
       if (missingLetters > 0) showToast.info("بعض الحروف لا تحتوي على أسئلة بعد.");
@@ -1057,9 +1068,39 @@ export default function HostView() {
     const sourceLabel = (source: SavedGame["source"]) => source === "template" ? "قالب" : source === "imported" ? "مستورد" : "مخصص";
     const categoryOptions = Array.from(new Set(savedGames.map(g => g.category)));
     const suggestedTemplates = [...STARTER_TEMPLATES, ...DEMO_COMMUNITY_TEMPLATES, ...communityTemplates].slice(0, 4);
+    const totalAnswered = results.reduce((n, r) => n + (r.totalQuestionsUsed || 0), 0);
+    const totalCorrect = Math.max(0, results.reduce((n, r) => n + (r.totalQuestionsUsed || 0) - (r.skippedQuestions || 0), 0));
+    const achievements = [
+      results.length >= 1 ? "🏁 أول لعبة" : "",
+      results.length >= 5 ? "🎮 خمس ألعاب" : "",
+      totalAnswered >= 10 ? "📚 10 أسئلة" : "",
+      results.some(r => r.skippedQuestions === 0 && r.totalQuestionsUsed > 0) ? "💯 جولة مثالية" : "",
+      favTemplateIds.length > 0 ? "⭐ مفضلات القوالب" : "",
+    ].filter(Boolean);
     return (
               <button className="btn-secondary" onClick={()=>{ setAppearance("soft"); localStorage.setItem("kc_appearance","soft"); }}>ناعم</button>
               <button className="btn-secondary" onClick={()=>{ setAppearance("contrast"); localStorage.setItem("kc_appearance","contrast"); }}>تباين عالٍ</button>
+            <div className="kc-card">
+              <div className="section-title">الملف والتقدم</div>
+              <div className="badge-chip">ألعاب لعبت: {results.length}</div>
+              <div className="badge-chip">أسئلة مجابة: {totalAnswered}</div>
+              <div className="badge-chip">معدل الدقة: {totalAnswered ? Math.round((totalCorrect / totalAnswered) * 100) : 0}%</div>
+              <div className="badge-chip">مفضلات القوالب: {favTemplateIds.length}</div>
+              <div style={{ fontSize:"0.75rem", color:"#94a3b8" }}>الإنجازات: {achievements.length ? achievements.join(" • ") : "ابدأ أول لعبة لفتح الإنجازات"}</div>
+              <div style={{ display:"flex", gap:"0.35rem", marginTop:"0.45rem", flexWrap:"wrap" }}>
+                <button className="btn-secondary" onClick={() => {
+                  const last = safeLoad<StarterTemplate | null>(LAST_TEMPLATE_KEY, null);
+                  if (!last) { showToast.info("لا يوجد قالب أخير"); return; }
+                  setAppView("host");
+                  if (!room) handleCreate();
+                  setTimeout(() => useTemplate(last), 250);
+                }}>تشغيل آخر قالب</button>
+                <button className="btn-danger" onClick={() => confirm("هل أنت متأكد؟ سيتم حذف البيانات المحلية من هذا الجهاز.", () => {
+                  [PROFILE_KEY, GAMES_KEY, RESULTS_KEY, COMMUNITY_TEMPLATES_KEY, LAST_TEMPLATE_KEY, FAV_TEMPLATES_KEY].forEach(safeRemove);
+                  window.location.reload();
+                })}>إعادة ضبط البيانات</button>
+              </div>
+            </div>
           <div style={{marginBottom:"0.8rem"}}><div style={{fontWeight:700,color:"#cbd5e1",marginBottom:"0.3rem"}}>المظهر</div><div style={{display:"flex",gap:"0.4rem",flexWrap:"wrap"}}><button className="btn-secondary" onClick={()=>{ setAppearance("light"); localStorage.setItem("kc_appearance","light"); }}>الوضع الفاتح</button><button className="btn-secondary" onClick={()=>{ setAppearance("soft"); localStorage.setItem("kc_appearance","soft"); }}>الوضع الناعم</button><button className="btn-secondary" onClick={()=>{ setAppearance("dark"); localStorage.setItem("kc_appearance","dark"); }}>الوضع الداكن</button><button className="btn-secondary" onClick={()=>{ setAppearance("contrast"); localStorage.setItem("kc_appearance","contrast"); }}>تباين عالٍ</button></div></div>
           <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:"0.5rem" }}>
             <div><div style={{ fontSize:"1.4rem", fontWeight:900, color:"#f59e0b" }}>وصلة المعرفة • لوحة التحكم</div><div style={{ color:"#94a3b8" }}>مرحباً، {profile.hostName}{profile.className ? ` • الصف/الفعالية: ${profile.className}` : ""}{profile.orgName ? ` • الجهة: ${profile.orgName}` : ""}</div></div>
@@ -1553,6 +1594,7 @@ export default function HostView() {
                     <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button>
                       <button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={()=>useTemplate(tpl)}>استخدم القالب</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>toggleFavoriteTemplate(tpl.id)}>{favTemplateIds.includes(tpl.id) ? "★ مفضل" : "☆ تفضيل"}</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>duplicateTemplate(tpl)}>تعديل نسخة</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplate(tpl)}>تصدير قالب</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplateCsv(tpl)}>تصدير كجدول</button>
