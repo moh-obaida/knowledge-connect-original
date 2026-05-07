@@ -404,7 +404,7 @@ export default function HostView() {
     const pts = room.activeQuestion?.points || 1;
     const scoreUp = room.activeTeam===1 ? { team1Score: room.team1Score+pts } : { team2Score: room.team2Score+pts };
     const winner = checkWinner(nb, room.gridSize);
-    const winMsg = winner===1 ? `🏆 ${room.team1.name} فاز!` : winner===2 ? `🏆 ${room.team2.name} فاز!` : "";
+    const winMsg = winner===1 ? "فاز الفريق الأزرق!" : winner===2 ? "فاز الفريق الأحمر!" : "";
     await push({ board:nb, ...scoreUp, questionStatus:"correct", selectedCellId:"",
       winnerMessage: winMsg, winnerTeam: winner,
       gameStatus: winMsg ? "finished" : room.gameStatus });
@@ -813,6 +813,8 @@ export default function HostView() {
 
   const filledCells = room.board.filter(c=>c.question.trim()).length;
   const claimedCells = room.board.filter(c=>c.claimedBy!==0).length;
+  const blueClaimedCells = room.board.filter(c=>c.claimedBy===1).length;
+  const redClaimedCells = room.board.filter(c=>c.claimedBy===2).length;
   const usedCells = room.board.filter(c=>c.used).length;
   const totalCells = room.board.length;
 
@@ -851,12 +853,25 @@ export default function HostView() {
       {/* Winner overlay */}
       {room.winnerMessage && (
         <div className="winner-overlay">
-          <div className="winner-card" style={{ borderColor: room.winnerTeam===1 ? room.team1.color : room.winnerTeam===2 ? room.team2.color : "#f59e0b" }}>
-            <div style={{ fontSize:"4rem", marginBottom:"1rem" }}>🏆</div>
-            <div style={{ fontSize:"2rem", fontWeight:900, color: room.winnerTeam===1 ? room.team1.color : room.winnerTeam===2 ? room.team2.color : "#f59e0b" }}>
+          <div className="winner-card" style={{ borderColor: room.winnerTeam===1 ? room.team1.color : room.winnerTeam===2 ? room.team2.color : "#f59e0b", maxWidth: 520 }}>
+            <div style={{ fontSize:"4rem", marginBottom:"0.5rem" }}>🏆</div>
+            <div style={{ fontSize:"2rem", fontWeight:900, color: room.winnerTeam===1 ? room.team1.color : room.winnerTeam===2 ? room.team2.color : "#f59e0b", marginBottom:"0.8rem" }}>
               {room.winnerMessage}
             </div>
-            <button className="btn-secondary" style={{ marginTop:"1.5rem" }} onClick={()=>push({ winnerMessage:"", winnerTeam:0 })}>إغلاق</button>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.6rem", width:"100%", marginBottom:"1rem" }}>
+              <div style={{ background:"#10233f", border:"1px solid #1e3a8a", borderRadius:"10px", padding:"0.6rem" }}>
+                <div style={{ color:"#93c5fd", fontSize:"0.82rem" }}>الفريق الأزرق</div>
+                <div style={{ color:"#dbeafe", fontWeight:800, fontSize:"1.3rem" }}>{blueClaimedCells}</div>
+              </div>
+              <div style={{ background:"#3f1018", border:"1px solid #991b1b", borderRadius:"10px", padding:"0.6rem" }}>
+                <div style={{ color:"#fda4af", fontSize:"0.82rem" }}>الفريق الأحمر</div>
+                <div style={{ color:"#ffe4e6", fontWeight:800, fontSize:"1.3rem" }}>{redClaimedCells}</div>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", justifyContent:"center" }}>
+              <button className="btn-gold" onClick={resetGame}>إعادة اللعب</button>
+              <button className="btn-secondary" onClick={()=>setActiveTab("templates")}>الرجوع للقوالب</button>
+            </div>
           </div>
         </div>
       )}
