@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createMockSession, generateCode } from "../lib/mockSessionService";
 import { generateMockQuestions } from "../lib/mockAiHelperService";
 import type { AiRequest, ClassroomSession } from "../lib/sessionTypes";
+import { useAppSettings } from "../hooks/useAppSettings";
 
 export default function ClassroomMode() {
   const [tab, setTab] = useState<"teacher"|"student"|"display"|"ai">("teacher");
@@ -12,12 +13,18 @@ export default function ClassroomMode() {
   const [msg, setMsg] = useState("");
   const [aiReq, setAiReq] = useState<AiRequest>({ topic:"الحروف", subject:"لغة عربية", grade:"الصف الأول", count:5, questionType:"mcq", language:"ar", difficulty:"easy" });
   const [aiOut, setAiOut] = useState<any[]>([]);
+  const { settings, update, textScale } = useAppSettings();
 
   return (
-    <div className="container" style={{ paddingTop:"1rem", paddingBottom:"2rem" }}>
+    <div className="container" style={{ paddingTop:"1rem", paddingBottom:"2rem", fontSize:`${textScale}rem` }}>
       <div className="kc-card" style={{ marginBottom:"0.75rem" }}>
         <div className="section-title">Classroom Mode <span style={{fontSize:"0.75rem",color:"#94a3b8"}}>Prototype • Local demo • No real multiplayer yet</span></div>
         <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>{["teacher","student","display","ai"].map(t=><button key={t} className="btn-secondary" onClick={()=>setTab(t as any)}>{t}</button>)}</div>
+        <div style={{ display:"flex", gap:"0.65rem", flexWrap:"wrap", marginTop:"0.5rem", color:"#94a3b8", fontSize:"0.8rem" }}>
+          <label><input type="checkbox" checked={settings.colorBlindMode} onChange={e=>update({ colorBlindMode:e.target.checked })} /> Color-blind mode</label>
+          <label><input type="checkbox" checked={settings.reducedMotion} onChange={e=>update({ reducedMotion:e.target.checked })} /> Reduced motion</label>
+          <label><input type="checkbox" checked={settings.largerText} onChange={e=>update({ largerText:e.target.checked })} /> Larger text</label>
+        </div>
       </div>
 
       {tab==="teacher" && <div className="kc-card"><div className="section-title">Teacher Mode</div>
