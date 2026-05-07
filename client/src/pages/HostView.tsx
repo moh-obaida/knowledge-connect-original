@@ -100,7 +100,7 @@ function CellEditor({ cell, onSave, onClose }: {
       <div className="modal-box" style={{ maxWidth: 520, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.25rem" }}>
           <div style={{ fontWeight:800, fontSize:"1.1rem", color:"#f59e0b" }}>إعداد سؤال الحرف: <span style={{ fontSize:"1.4rem" }}>{cell.label}</span></div>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"#64748b", fontSize:"1.2rem" }}>✕</button>
+          <button aria-label="إغلاق نافذة السؤال" onClick={onClose} style={{ background:"none", border:"none", color:"#64748b", fontSize:"1.2rem" }}>✕</button>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:"0.85rem" }}>
           <div style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.6rem" }}>
@@ -961,7 +961,7 @@ export default function HostView() {
                 <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={importBoard}>استيراد لعبة</button>
               </div>
             </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.25rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))", gap:"1.25rem" }}>
             {/* Board */}
             <div className="kc-card">
               <div className="section-title">لوحة الحروف</div>
