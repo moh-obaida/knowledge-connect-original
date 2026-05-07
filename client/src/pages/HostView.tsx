@@ -168,6 +168,7 @@ type StarterTemplate = {
   name: string;
   categories: string[];
   level: "سهل" | "متوسط" | "صعب";
+  description?: string;
   questions: string[];
   boardBanks?: Array<{ cellId:string; label:string; questionBank:any[] }>;
   createdAt?: string;
@@ -237,17 +238,12 @@ const createFullLetterTemplate = (id: string, name: string, category: string, le
   return { id, name, categories: [category], level, questions: boardBanks.map(b => b.questionBank[0].question), boardBanks };
 };
 const STARTER_TEMPLATES: StarterTemplate[] = [
-  createFullLetterTemplate("teen1", "تحدي الثقافة العامة", "ثقافة عامة", "متوسط", 3),
-  createFullLetterTemplate("teen2", "تحدي التقنية والذكاء الاصطناعي", "تقنية", "متوسط", 3),
-  createFullLetterTemplate("teen3", "تحدي القيم والحياة اليومية", "حياة يومية", "سهل"),
-  createFullLetterTemplate("teen4", "تحدي اللغة العربية للمراهقين", "لغة عربية", "متوسط", 3),
-  { id:"t1", name:"قالب إسلاميات مبسط", categories:["إسلاميات"], level:"سهل", questions:["ما أول أركان الإسلام؟","ما اسم أول سورة في القرآن الكريم؟","ماذا نقول قبل قراءة القرآن؟","من هو خاتم الأنبياء؟","ما اسم الكتاب الذي أنزله الله على سيدنا محمد ﷺ؟","كم عدد الصلوات المفروضة في اليوم؟","ماذا نقول عند بداية الطعام؟","ما القبلة التي يتجه إليها المسلم في الصلاة؟","ما الشهر الذي يصوم فيه المسلمون؟","ما معنى الصدق؟"] },
-  { id:"t2", name:"قالب لغة عربية للحروف", categories:["لغة عربية"], level:"سهل", questions:["اختر كلمة تبدأ بحرف الألف.","ما الحرف الأول في كلمة: باب؟","أكمل الكلمة بالحرف المناسب: _سد","اختر الكلمة المختلفة.","ما الحرف الأخير في كلمة: كتاب؟","أي كلمة تبدأ بحرف الميم؟","أكمل الكلمة: قـ_ر","ما الحرف الأول في كلمة: وردة؟","أي كلمة تحتوي على حرف السين؟","اختر كلمة تنتهي بحرف النون."] },
-  { id:"t3", name:"قالب رياضيات سريع", categories:["رياضيات"], level:"متوسط", questions:["ما ناتج ٣ + ٤؟","اختر العدد الأكبر: ٨ أم ٥؟","إذا كان مع أحمد ٥ أقلام وأعطى صديقه ٢، كم بقي معه؟","أكمل النمط: ٢، ٤، ٦، __","ما ناتج ١٠ - ٣؟","أي عدد أصغر: ٦ أم ٩؟","ما ناتج ٢ × ٣؟","إذا كان لديك ٤ تفاحات وأضفت ٣، كم يصبح المجموع؟","أكمل: ٥، ١٠، ١٥، __","كم ضلعًا للمثلث؟"] },
-  { id:"t4", name:"قالب معرفة عامة", categories:["معرفة عامة"], level:"سهل", questions:["كم يومًا في الأسبوع؟","ما لون السماء في النهار؟","ما الحيوان الذي يلقب بملك الغابة؟","ما الشيء الذي نستخدمه للكتابة؟","كم شهرًا في السنة؟","ما الكوكب الذي نعيش عليه؟","ما الحيوان الذي يعطينا الحليب؟","ما وسيلة النقل التي تطير في السماء؟","ما العضو الذي نستخدمه للرؤية؟","ماذا نستخدم لقياس الوقت؟"] },
-  { id:"t5", name:"قالب مفردات", categories:["مفردات"], level:"متوسط", questions:["ما ضد كلمة \"كبير\"؟","ما مرادف كلمة \"سعيد\"؟","ما معنى كلمة \"أمانة\"؟","اختر ضد كلمة \"سريع\".","اختر مرادف كلمة \"جميل\".","ما ضد كلمة \"قريب\"؟","اختر الكلمة التي تدل على النظافة.","ما مرادف كلمة \"منزل\"؟","ما ضد كلمة \"ليل\"؟","اختر الكلمة المناسبة: طالب ____ الدرس."] },
-  { id:"t6", name:"قالب قراءة وفهم", categories:["قراءة وفهم"], level:"متوسط", questions:["اقرأ: \"ذهب سالم إلى المدرسة صباحًا.\" أين ذهب سالم؟","اقرأ: \"شربت مريم الحليب.\" ماذا شربت مريم؟","اقرأ: \"جلس الطفل تحت الشجرة.\" أين جلس الطفل؟","اقرأ: \"اشترى خالد كتابًا جديدًا.\" ماذا اشترى خالد؟","اقرأ: \"ساعدت فاطمة أمها في البيت.\" من ساعدت فاطمة؟","اقرأ: \"طار العصفور فوق الشجرة.\" أين طار العصفور؟","اقرأ: \"زرع علي وردة في الحديقة.\" ماذا زرع علي؟","اقرأ: \"قرأ الطالب القصة بهدوء.\" ماذا قرأ الطالب؟","اقرأ: \"لعب الأطفال في الحديقة.\" أين لعب الأطفال؟","اقرأ: \"أكلت القطة السمكة.\" ماذا أكلت القطة؟"] },
-  { id:"t7", name:"قالب مراجعة شاملة", categories:["إسلاميات","لغة عربية","رياضيات","معرفة عامة"], level:"متوسط", questions:["ما أول أركان الإسلام؟","اختر كلمة تبدأ بحرف الألف.","ما ناتج ٣ + ٤؟","كم يومًا في الأسبوع؟","ما الحرف الأول في كلمة: باب؟","ما ناتج ١٠ - ٣؟","ما الشهر الذي يصوم فيه المسلمون؟","ما لون السماء في النهار؟","أكمل النمط: ٢، ٤، ٦، __","ما القبلة التي يتجه إليها المسلم في الصلاة؟"] },
+  { ...createFullLetterTemplate("tpl_letters_basic", "قالب الحروف الأساسية", "حروف", "سهل", 2), description:"قالب تأسيسي لتدريب الطلاب على الحروف الأساسية." },
+  { id:"tpl_islamic", name:"قالب أسئلة إسلامية", categories:["التربية الإسلامية"], level:"سهل", description:"أسئلة قصيرة ومباشرة في القيم والمفاهيم الإسلامية.", questions:["ما أول أركان الإسلام؟","كم عدد الصلوات المفروضة في اليوم؟","ما الشهر الذي يصوم فيه المسلمون؟","ما القبلة التي يتجه إليها المسلم في الصلاة؟","من هو خاتم الأنبياء؟"] },
+  { id:"tpl_arabic", name:"قالب اللغة العربية", categories:["اللغة العربية"], level:"متوسط", description:"مفردات وحروف وفهم لغوي للمرحلة الأساسية.", questions:["اختر كلمة تبدأ بحرف الألف.","ما الحرف الأول في كلمة: باب؟","أي كلمة تحتوي على حرف السين؟","اختر كلمة تنتهي بحرف النون.","ما مرادف كلمة منزل؟"] },
+  { id:"tpl_science", name:"قالب العلوم", categories:["العلوم"], level:"متوسط", description:"مراجعة سريعة لمفاهيم علمية عامة.", questions:["ما الكوكب الذي نعيش عليه؟","ما العضو الذي نستخدمه للرؤية؟","ما لون السماء في النهار؟","ما الحيوان الذي يعطينا الحليب؟","ما وسيلة النقل التي تطير في السماء؟"] },
+  { id:"tpl_quick_review", name:"قالب مراجعة سريعة", categories:["مراجعة عامة"], level:"متوسط", description:"قالب متوازن للمراجعة قبل الاختبار.", questions:["ما أول أركان الإسلام؟","ما ناتج ٣ + ٤؟","ما الحرف الأول في كلمة: وردة؟","كم يومًا في الأسبوع؟","أكمل النمط: ٢، ٤، ٦، __"] },
+  { id:"tpl_empty_teacher", name:"قالب فارغ للمعلم", categories:["غير مصنف"], level:"متوسط", description:"قالب فارغ مخصص لبناء لعبة من الصفر.", questions:[] },
 ];
 
 // ── Color presets ─────────────────────────────────────────────
@@ -1063,6 +1059,7 @@ export default function HostView() {
                   return (
                   <div key={tpl.id} style={{ background:"#141e2d", border:"1.5px solid #1a2332", borderRadius:"14px", padding:"0.85rem" }}>
                     <div style={{ fontWeight:800, color:"#f0ede8", marginBottom:"0.35rem" }}>{tpl.name}</div>
+                    {tpl.description && <div style={{ fontSize:"0.74rem", color:"#cbd5e1", marginBottom:"0.35rem" }}>{tpl.description}</div>}
                     <div style={{ fontSize:"0.74rem", color:"#94a3b8", lineHeight:1.8 }}>
                       <div>التصنيف: {tpl.categories.join("، ")}</div>
                       <div>المستوى: {tpl.level}</div>
@@ -1071,6 +1068,7 @@ export default function HostView() {
                       <div>المتوسط: {avg} أسئلة لكل حرف</div>
                       {covered < ARABIC_LETTERS_FULL.length && <div style={{ color:"#f59e0b" }}>هذا القالب لا يغطي جميع الحروف.</div>}
                       {tpl.createdAt && <div>تاريخ الحفظ: {new Date(tpl.createdAt).toLocaleDateString("ar")}</div>}
+                      {tpl.userCreated && <div style={{ color:"#f59e0b" }}>قالب مجتمعي محلي (تجريبي)</div>}
                     </div>
                     <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button>
@@ -1082,6 +1080,9 @@ export default function HostView() {
                     </div>
                   </div>
                 );})}
+                {[...STARTER_TEMPLATES, ...communityTemplates].filter(tpl=>!templateSearch || tpl.name.includes(templateSearch)).filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory)).filter(tpl=>!templateLevel || tpl.level===templateLevel).length===0 && (
+                  <div style={{ gridColumn:"1 / -1", color:"#94a3b8", fontSize:"0.84rem" }}>لا توجد قوالب بعد.</div>
+                )}
               </div>
             </div>
           </div>
