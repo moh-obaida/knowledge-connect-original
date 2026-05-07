@@ -411,6 +411,19 @@ export default function HostView() {
     setFavTemplateIds(next);
     safeSave(FAV_TEMPLATES_KEY, next);
   };
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COMMUNITY_TEMPLATES_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setCommunityTemplates(parsed);
+      }
+    } catch {
+      showToast.warning("تعذر قراءة قوالب المجتمع المحفوظة.");
+    }
+  }, []);
+
   const getAppearanceBg = (mode: "light" | "soft" | "contrast" | "dark") => {
     if (mode === "light") return "#f8fafc";
     if (mode === "soft") return "#141b2d";
@@ -419,22 +432,18 @@ export default function HostView() {
   };
   const appearanceBg = getAppearanceBg(appearance);
   const getPageGradient = (mode: "light" | "soft" | "contrast" | "dark") => {
-    if (mode === "light") return `radial-gradient(circle at top, ${themeAccent[themeName]}22 0%, #f8fafc 55%)`;
-    if (mode === "soft") return `radial-gradient(circle at top, ${themeAccent[themeName]}33 0%, #141b2d 60%)`;
-    if (mode === "contrast") return `radial-gradient(circle at top, #ffffff22 0%, #000 62%)`;
+    if (mode === "light") {
+      return `radial-gradient(circle at top, ${themeAccent[themeName]}22 0%, #f8fafc 55%)`;
+    }
+    if (mode === "soft") {
+      return `radial-gradient(circle at top, ${themeAccent[themeName]}33 0%, #141b2d 60%)`;
+    }
+    if (mode === "contrast") {
+      return `radial-gradient(circle at top, #ffffff22 0%, #000 62%)`;
+    }
     return `radial-gradient(circle at top, ${themeAccent[themeName]}33 0%, #090d18 60%)`;
   };
   const pageGradient = getPageGradient(appearance);
-      if (Array.isArray(parsed)) setCommunityTemplates(parsed);
-    } catch {
-      showToast.warning("تعذر قراءة قوالب المجتمع المحفوظة.");
-    }
-  }, []);
-
-  // Load last room
-  useEffect(() => {
-    const last = loadLastRoomCode();
-    if (last && isFirebaseConfigured()) {
       setRoomCode(last);
       const unsub = subscribeToRoom(last, s => {
         if (s) setRoom(s); else { setRoom(null); setRoomCode(""); saveLastRoomCode(""); }
