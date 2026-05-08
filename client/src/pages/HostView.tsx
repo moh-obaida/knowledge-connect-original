@@ -51,12 +51,12 @@ function ConfirmModal({ msg, onYes, onNo }: { msg: string; onYes: () => void; on
 }
 
 // ── Cell question editor ──────────────────────────────────────
-type QType = "fill" | "mcq" | "tf";
+type QType = "fill" | "mcq" | "tf" | "image" | "open";
 const TF_OPTIONS = ["صحيح", "خطأ"] as const;
 function CellEditor({ cell, onSave, onClose }: {
   cell: BoardCell; onSave: (u: Partial<BoardCell>) => void; onClose: () => void;
 }) {
-  type BankQ = { type: QType; question:string; answer:string; choices?: string[]; category:string; difficulty: BoardCell["difficulty"]; points:number; hint:string; explanation:string };
+  type BankQ = { type: QType; question:string; answer:string; choices?: string[]; imageUrl?: string; category:string; difficulty: BoardCell["difficulty"]; points:number; hint:string; explanation:string };
   const normalized = (): BankQ[] => {
     const arr = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank : [];
     const mapped = arr.filter((x:any)=>x?.question).map((x:any)=>({
@@ -64,6 +64,7 @@ function CellEditor({ cell, onSave, onClose }: {
       question: String(x.question||"").trim(),
       answer: String(x.answer||"").trim(),
       choices: Array.isArray(x.choices) ? x.choices.map((c:any)=>String(c||"").trim()).filter(Boolean) : undefined,
+      imageUrl: String(x.imageUrl||"").trim(),
       category: String(x.category||"غير مصنف").trim() || "غير مصنف",
       difficulty: (x.difficulty==="easy"||x.difficulty==="medium"||x.difficulty==="hard") ? x.difficulty : "medium",
       points: Number(x.points)||1,
@@ -81,6 +82,7 @@ function CellEditor({ cell, onSave, onClose }: {
   const [a, setA] = useState(cell.answer);
   const [choices, setChoices] = useState<string[]>(["", "", "", ""]);
   const [cat, setCat] = useState(cell.category);
+  const [imageUrl, setImageUrl] = useState("");
   const [diff, setDiff] = useState(cell.difficulty);
   const [pts, setPts] = useState(cell.points);
   const [hint, setHint] = useState(cell.hint);
@@ -107,7 +109,7 @@ function CellEditor({ cell, onSave, onClose }: {
       }
     }
     const next = [...questionBank];
-    const payload: BankQ = { type, question: q.trim(), answer: answerToSave, choices: choicesToSave, category: (cat.trim()||"غير مصنف"), difficulty: diff, points: Number(pts)||1, hint: hint.trim(), explanation: expl.trim() };
+    const payload: BankQ = { type, question: q.trim(), answer: answerToSave, choices: choicesToSave, imageUrl: imageUrl.trim(), category: (cat.trim()||"غير مصنف"), difficulty: diff, points: Number(pts)||1, hint: hint.trim(), explanation: expl.trim() };
     if (editingIndex >= 0) next[editingIndex] = payload;
     else {
       if (next.length >= 50) { showToast.warning("وصلت إلى الحد الأقصى لهذا الحرف: 50 سؤالًا."); return; }
@@ -133,6 +135,7 @@ function CellEditor({ cell, onSave, onClose }: {
       setChoices(["", "", "", ""]);
     }
     setCat(item.category);
+    setImageUrl(item.imageUrl || "");
     setDiff(item.difficulty);
     setPts(item.points);
     setHint(item.hint);
@@ -630,7 +633,8 @@ export default function HostView() {
       if (room.gameStatus === "finished" && room.winnerMessage) return;
       const t1 = Number.isFinite(room.team1Score) ? room.team1Score : 0;
       const t2 = Number.isFinite(room.team2Score) ? room.team2Score : 0;
-      const winner: 0 | 1 | 2 = t1 > t2 ? 1 : t2 > t1 ? 2 : 0;
+      const pathWinner = checkWinner(room.board, room.gridSize);
+      const winner: 0 | 1 | 2 = gameMode === "connection" ? pathWinner : (t1 > t2 ? 1 : t2 > t1 ? 2 : 0);
       const msg = winner === 1 ? `🏆 ${room.team1.name} فاز!` : winner === 2 ? `🏆 ${room.team2.name} فاز!` : "🤝 تعادل!";
       await push({ winnerMessage: msg, winnerTeam: winner, gameStatus: "finished" });
       try {
@@ -1293,6 +1297,27 @@ export default function HostView() {
   const usedCells = room.board.filter(c=>c.used).length;
   const totalCells = room.board.length;
   const winningPathIds = room.winnerTeam ? findWinningPath(room.board, room.gridSize, room.winnerTeam as 1|2) : [];
+  const gameMode = room.gameMode || "classic";
+
+  const applyPowerUp = async (kind: "double_points"|"extra_time"|"switch_question") => {
+    if (!room) return;
+    if (kind === "double_points" && room.activeQuestion) {
+      await push({ activePowerUp: "double_points", activeQuestion: { ...room.activeQuestion, points: Math.max(1, (room.activeQuestion.points || 1) * 2) } });
+      showToast.success("تم تفعيل مضاعفة النقاط للسؤال الحالي");
+      return;
+    }
+    if (kind === "extra_time") {
+      await push({ activePowerUp: "extra_time", timerValue: (room.timerValue || 0) + 15, timerSetting: (room.timerSetting || 0) + 15 });
+      showToast.success("تمت إضافة 15 ثانية");
+      return;
+    }
+    if (kind === "switch_question") {
+      await push({ activePowerUp: "switch_question" });
+      await skipQ();
+      showToast.success("تم تفعيل تبديل السؤال");
+    }
+  };
+
   const filteredTemplates = [...STARTER_TEMPLATES, ...communityTemplates]
     .filter(tpl=>!templateSearch || tpl.name.includes(templateSearch))
     .filter(tpl=>!templateCategory || tpl.categories.includes(templateCategory))
@@ -1671,6 +1696,18 @@ export default function HostView() {
             <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={undoLastAction}>↶ إلغاء آخر حركة</button>
             <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={() => { if (room) showToast.success("تم حفظ اللعبة"); }}>💾 حفظ اللعبة</button>
             <button className="btn-danger" style={{ fontSize: "0.78rem", marginInlineStart: "auto" }} onClick={endGame}>🏁 إنهاء اللعبة</button>
+          </div>
+          <div className="kc-card" style={{ marginBottom:"0.85rem" }}>
+            <div className="section-title">وضع اللعبة والتعزيزات</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:"0.5rem", marginBottom:"0.55rem" }}>
+              <select className="kc-input" value={gameMode} onChange={e=>push({ gameMode: e.target.value as any })}>
+                <option value="classic">التحدي الكلاسيكي</option><option value="speed">وضع السرعة</option><option value="points">وضع النقاط</option><option value="connection">وضع الوصلة</option><option value="teacher">وضع المعلم</option><option value="training">وضع التدريب</option>
+              </select>
+              <button className="btn-secondary" onClick={()=>applyPowerUp("double_points")}>مضاعفة النقاط</button>
+              <button className="btn-secondary" onClick={()=>applyPowerUp("extra_time")}>وقت إضافي</button>
+              <button className="btn-secondary" onClick={()=>applyPowerUp("switch_question")}>تبديل السؤال</button>
+            </div>
+            <div style={{ fontSize:"0.78rem", color:"#94a3b8" }}>تعزيزات متاحة للعرض حالياً: سرقة سؤال • حذف خيارين • حماية الحرف (سيتم تفعيل منطقها لاحقاً).</div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns: presentationMode ? "1fr" : "1fr 1.4fr", gap:"1.25rem" }}>
             {/* Left: controls */}

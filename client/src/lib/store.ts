@@ -23,7 +23,7 @@ export interface Team {
   initials: string;
 }
 
-export type QuestionTypeValue = "fill" | "mcq" | "tf";
+export type QuestionTypeValue = "fill" | "mcq" | "tf" | "image" | "open";
 
 export interface ActiveQuestion {
   cellId: string;
@@ -37,6 +37,7 @@ export interface ActiveQuestion {
   explanation: string;
   type?: QuestionTypeValue;
   choices?: string[];
+  imageUrl?: string;
 }
 
 export interface Player {
@@ -75,6 +76,11 @@ export interface RoomState {
   winnerMessage: string;
   winnerTeam: 0 | 1 | 2;
   questionStatus: "idle" | "active" | "answer_revealed" | "correct" | "wrong" | "skipped" | "time_up";
+  gameMode?: "classic" | "speed" | "points" | "connection" | "teacher" | "training";
+  activePowerUp?: "none" | "double_points" | "extra_time" | "switch_question";
+  buzzerEnabled?: boolean;
+  buzzerFirstPlayer?: string;
+  buzzerAt?: number;
   roundNumber: number;
   players: Record<string, Player>;
 }
@@ -159,6 +165,11 @@ export function defaultRoomState(roomCode: string): RoomState {
     winnerMessage: "",
     winnerTeam: 0,
     questionStatus: "idle",
+    gameMode: "classic",
+    activePowerUp: "none",
+    buzzerEnabled: false,
+    buzzerFirstPlayer: "",
+    buzzerAt: 0,
     roundNumber: 1,
     players: {},
   };
