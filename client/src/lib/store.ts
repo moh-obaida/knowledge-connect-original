@@ -136,7 +136,8 @@ export function sortedBoard(board: BoardCell[]): BoardCell[] {
 
 export function defaultRoomState(roomCode: string): RoomState {
   const gridSize: 4 | 5 | 6 = 5;
-  const cellLabelStyle: RoomState["cellLabelStyle"] = "arabic";
+  const language = (typeof window !== "undefined" ? localStorage.getItem("kc_language") : "ar") === "en" ? "en" : "ar";
+  const cellLabelStyle: RoomState["cellLabelStyle"] = language === "en" ? "english" : "arabic";
   return {
     roomCode,
     gameTitle: "وصلة المعرفة",
@@ -148,8 +149,8 @@ export function defaultRoomState(roomCode: string): RoomState {
     winningMode: "path",
     timerSetting: 0,
     stealMode: "none",
-    team1: { name: "الفريق الأزرق", color: "#2563eb", initials: "ز" },
-    team2: { name: "الفريق الأحمر", color: "#ef4444", initials: "ح" },
+    team1: { name: language === "en" ? "Blue Team" : "الفريق الأزرق", color: "#2563eb", initials: language === "en" ? "B" : "ز" },
+    team2: { name: language === "en" ? "Red Team" : "الفريق الأحمر", color: "#ef4444", initials: language === "en" ? "R" : "ح" },
     team1Score: 0,
     team2Score: 0,
     board: generateBoard(gridSize, cellLabelStyle),

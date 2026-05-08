@@ -2,9 +2,11 @@ import { useLocation } from "wouter";
 import { useState } from "react";
 import { showToast } from "../components/KcToast";
 import { useAppSettings } from "../hooks/useAppSettings";
+import { useLanguage } from "../hooks/useLanguage";
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { t, language, toggleLanguage } = useLanguage();
   const profileKey = "kc_host_profile";
   const { settings, textScale } = useAppSettings();
   const appearanceMode = settings.theme === "soft" ? "balanced" : settings.theme === "high-contrast" ? "dark" : settings.theme;
@@ -24,7 +26,7 @@ export default function Home() {
   const [orgName, setOrgName] = useState(parsed?.orgName || "");
 
   const goHost = () => {
-    if (!hostName.trim()) { showToast.warning("يرجى إدخال الاسم."); return; }
+    if (!hostName.trim()) { showToast.warning(language === "ar" ? "يرجى إدخال الاسم." : "Please enter a name."); return; }
     localStorage.setItem(profileKey, JSON.stringify({ hostName: hostName.trim(), className: className.trim(), orgName: orgName.trim() }));
     setLocation("/host");
   };
@@ -42,6 +44,7 @@ export default function Home() {
   return (
     <div style={{ minHeight: "100vh", padding: "1.25rem 1rem", fontSize: `${textScale}rem`, background: bgByMode[appearanceMode] || bgByMode.dark }}>
       <div style={{ width: "100%", maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div style={{ display:"flex", justifyContent:"flex-end" }}><button className="btn-secondary" onClick={toggleLanguage}>{language === "ar" ? "English" : "العربية"}</button></div>
 
         {/* Hero */}
         <div className="kc-card" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem", padding: "1.5rem" }}>
@@ -56,8 +59,8 @@ export default function Home() {
               أنشئ ألعاباً تعليمية تفاعلية، استخدم قوالب جاهزة، واستضف تحديات ممتعة للطلاب بسرعة وسهولة.
             </div>
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "1rem" }}>
-              <button className="btn-gold" onClick={goHost}>ابدأ الآن</button>
-              <button className="btn-secondary" onClick={openTemplates}>استكشف القوالب</button>
+              <button className="btn-gold" onClick={goHost}>{t("home.startNow")}</button>
+              <button className="btn-secondary" onClick={openTemplates}>{t("home.exploreTemplates")}</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "0.45rem", marginTop: "1rem" }}>
               {["قوالب جاهزة", "لوحة تحكم للمضيف", "وضع عرض للفصل", "QR للانضمام"].map((x) => (
@@ -68,8 +71,8 @@ export default function Home() {
           </div>
 
           <div style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: 16, padding: "1rem" }}>
-            <div style={{ color: accent, fontWeight: 800, marginBottom: "0.6rem" }}>دخول المضيف</div>
-            <label style={lbl}>اسم المضيف</label>
+            <div style={{ color: accent, fontWeight: 800, marginBottom: "0.6rem" }}>{t("home.hostLogin")}</div>
+            <label style={lbl}>{t("home.hostName")}</label>
             <input className="kc-input" value={hostName} onChange={(e) => setHostName(e.target.value)} placeholder="مثال: الأستاذ أحمد" />
             <label style={lbl}>اسم الصف أو الفعالية (اختياري)</label>
             <input className="kc-input" value={className} onChange={(e) => setClassName(e.target.value)} />
@@ -79,7 +82,7 @@ export default function Home() {
               <button className="btn-gold" onClick={goHost}>بدء الاستضافة</button>
               <button className="btn-secondary" onClick={openTemplates}>القوالب</button>
             </div>
-            <button className="btn-secondary" style={{ width: "100%", marginTop: "0.5rem" }} onClick={() => setLocation("/join")}>انضمام الطالب</button>
+            <button className="btn-secondary" style={{ width: "100%", marginTop: "0.5rem" }} onClick={() => setLocation("/join")}>{t("home.joinStudent")}</button>
             <div style={{ marginTop: "0.7rem", color: "#94a3b8", fontSize: "0.78rem", textAlign: "center" }}>
               تجربة محلية: تُحفظ البيانات على هذا الجهاز فقط.
             </div>
@@ -140,7 +143,7 @@ export default function Home() {
             <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>أدخل اسمك وابدأ تحدياً جديداً، أو افتح القوالب الجاهزة.</div>
           </div>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <button className="btn-gold" onClick={goHost}>ابدأ الآن</button>
+            <button className="btn-gold" onClick={goHost}>{t("home.startNow")}</button>
             <button className="btn-secondary" onClick={openTemplates}>عرض القوالب</button>
           </div>
         </div>
