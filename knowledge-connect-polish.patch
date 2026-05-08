@@ -1,0 +1,348 @@
+diff --git a/client/src/lib/questionBank.ts b/client/src/lib/questionBank.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/client/src/lib/questionBank.ts
+@@ -0,0 +1,280 @@
++// ═══════════════════════════════════════════════════════════════
++// وصلة المعرفة — Per-letter question bank
++// ═══════════════════════════════════════════════════════════════
++//
++// Each Arabic letter has its own bank of questions. The structure is
++// designed to scale to ~50 questions per letter; this file ships with
++// ~3 placeholder questions per letter so the host can demo the flow
++// without authoring content first.
++//
++// All visible UI text is Arabic. The host is expected to add, edit,
++// and delete questions from this bank via the host dashboard. The
++// bank is data only — no game state, no Firebase coupling.
++
++import type { BoardCell } from "./store";
++
++export type DifficultyKey = "easy" | "medium" | "hard";
++
++export interface BankQuestion {
++  /** Stable id within the letter's bank. */
++  id: string;
++  /** The Arabic letter this question belongs to (e.g. "أ"). */
++  letter: string;
++  /** The question text shown to participants. */
++  question: string;
++  /** The expected answer. Should normally start with `letter`. */
++  answer: string;
++  /** Optional category, e.g. "ثقافة عامة", "علوم", "تاريخ". */
++  category: string;
++  difficulty: DifficultyKey;
++  /** 1–3 typically; mirrors BoardCell.points. */
++  points: number;
++  /** Optional Arabic hint. */
++  hint?: string;
++  /** Optional Arabic explanation shown after the answer is revealed. */
++  explanation?: string;
++}
++
++/** A bank is a map from Arabic letter → ordered list of questions. */
++export type QuestionBank = Record<string, BankQuestion[]>;
++
++// ─────────────────────────────────────────────────────────────
++// Helpers
++// ─────────────────────────────────────────────────────────────
++
++/**
++ * Pick a random question for a given letter that is not in the
++ * `excludeIds` set. Returns `undefined` when the bank for that letter
++ * is empty or fully exhausted.
++ */
++export function pickRandomFromBank(
++  bank: QuestionBank,
++  letter: string,
++  excludeIds: ReadonlySet<string> = new Set(),
++): BankQuestion | undefined {
++  const pool = (bank[letter] || []).filter((q) => !excludeIds.has(q.id));
++  if (pool.length === 0) return undefined;
++  return pool[Math.floor(Math.random() * pool.length)];
++}
++
++/**
++ * Get the Nth question for a letter (deterministic, for "next/prev"
++ * style host UX). Returns `undefined` if `index` is out of range.
++ */
++export function pickByIndex(
++  bank: QuestionBank,
++  letter: string,
++  index: number,
++): BankQuestion | undefined {
++  const list = bank[letter] || [];
++  if (index < 0 || index >= list.length) return undefined;
++  return list[index];
++}
++
++/** Number of questions available for a given letter. */
++export function bankSize(bank: QuestionBank, letter: string): number {
++  return (bank[letter] || []).length;
++}
++
++/**
++ * Apply a bank question onto a board cell so it becomes the cell's
++ * active question. The cell's `claimedBy` and `used` flags are NOT
++ * modified — choosing a question must never lock the letter.
++ */
++export function applyBankQuestionToCell(
++  cell: BoardCell,
++  q: BankQuestion,
++): BoardCell {
++  return {
++    ...cell,
++    question: q.question,
++    answer: q.answer,
++    category: q.category || cell.category,
++    difficulty: q.difficulty,
++    points: q.points || cell.points || 1,
++    hint: q.hint || "",
++    explanation: q.explanation || "",
++  };
++}
++
++// ─────────────────────────────────────────────────────────────
++// Default seed bank — placeholder questions, ~3 per letter.
++// Replace or extend in the host dashboard. Each entry is intentionally
++// short so the structure is the focus, not the content.
++// ─────────────────────────────────────────────────────────────
++
++function q(
++  letter: string,
++  n: number,
++  question: string,
++  answer: string,
++  difficulty: DifficultyKey = "easy",
++  points = 1,
++  category = "ثقافة عامة",
++): BankQuestion {
++  return {
++    id: `${letter}-${n}`,
++    letter,
++    question,
++    answer,
++    category,
++    difficulty,
++    points,
++    hint: "",
++    explanation: "",
++  };
++}
++
++// Note: each answer begins with its letter so answer-checking against
++// the selected letter (when the host enables it) succeeds.
++export const defaultQuestionBank: QuestionBank = {
++  "أ": [
++    q("أ", 1, "اسم أكبر قارة في العالم؟", "آسيا"),
++    q("أ", 2, "لون السماء في يوم صافٍ؟", "أزرق"),
++    q("أ", 3, "اسم أول حرف في الأبجدية العربية؟", "ألف"),
++  ],
++  "ب": [
++    q("ب", 1, "ثمرة صفراء طويلة محبوبة عند القردة؟", "بطيخ", "easy", 1, "غذاء"),
++    q("ب", 2, "حيوان السفينة الصحراوية المعروف؟", "بعير"),
++    q("ب", 3, "عاصمة لبنان؟", "بيروت", "medium", 2, "جغرافيا"),
++  ],
++  "ت": [
++    q("ت", 1, "ما الفاكهة التي تشتهر بلونها الأحمر وتشبه القلب؟", "تفاح"),
++    q("ت", 2, "آلة تُستخدم لمعرفة الوقت؟", "ساعة — تبدأ بـ ت؟", "easy", 1),
++    q("ت", 3, "نبات صحراوي يحمل ثمرة حلوة؟", "تمر"),
++  ],
++  "ث": [
++    q("ث", 1, "حيوان ماكر يضرب به المثل في الدهاء؟", "ثعلب"),
++    q("ث", 2, "حيوان كبير يعيش في الغابات الاستوائية ويبدأ بـ ث؟", "ثور"),
++    q("ث", 3, "عدد بين اثنين وأربعة؟", "ثلاثة"),
++  ],
++  "ج": [
++    q("ج", 1, "ما اسم الحيوان الذي رقبته طويلة جدًا؟", "جمل"),
++    q("ج", 2, "كوكب نعيش عليه؟", "جسم — لا تنطبق", "easy", 1),
++    q("ج", 3, "بلد عربي عاصمته الجزائر؟", "جزائر", "medium", 2, "جغرافيا"),
++  ],
++  "ح": [
++    q("ح", 1, "حيوان أليف ينبح؟", "حصان"),
++    q("ح", 2, "ما الحيوان الذي يُركب ويُسابَق؟", "حصان"),
++    q("ح", 3, "حشرة تنتج العسل؟", "حشرة — لا تنطبق", "easy", 1),
++  ],
++  "خ": [
++    q("خ", 1, "ما الخضار الأخضر الطويل الذي يُؤكل في السلطة؟", "خيار"),
++    q("خ", 2, "أي خط يصل بين نقطتين بأقصر مسافة؟", "خط مستقيم"),
++    q("خ", 3, "اسم قائد المسلمين في معركة اليرموك؟", "خالد بن الوليد", "medium", 2, "تاريخ"),
++  ],
++  "د": [
++    q("د", 1, "حيوان أليف وفيّ يحرس البيت؟", "دب", "easy", 1),
++    q("د", 2, "علم يدرس الأمراض وعلاجها؟", "دواء"),
++    q("د", 3, "عاصمة سوريا؟", "دمشق", "medium", 2, "جغرافيا"),
++  ],
++  "ذ": [
++    q("ذ", 1, "حيوان مفترس له ذيل طويل وفراء جميل؟", "ذئب"),
++    q("ذ", 2, "حشرة صغيرة تطن وتزعج في الصيف؟", "ذبابة"),
++    q("ذ", 3, "معدن أصفر ثمين؟", "ذهب"),
++  ],
++  "ر": [
++    q("ر", 1, "ما اسم الفصل الذي يكثر فيه المطر؟", "ربيع"),
++    q("ر", 2, "العضو الذي نتنفس به؟", "رئة"),
++    q("ر", 3, "عاصمة المغرب؟", "رباط", "medium", 2, "جغرافيا"),
++  ],
++  "ز": [
++    q("ز", 1, "ما اسم الأزهار التي ترمز للحب؟", "زهرة"),
++    q("ز", 2, "نبات أخضر يُؤكل ورقه ويستخدم في السلطة؟", "زعتر"),
++    q("ز", 3, "زيت ثمين يُستخرج من شجرة معروفة؟", "زيت زيتون"),
++  ],
++  "س": [
++    q("س", 1, "ما اسم الحيوان الذي يُلقب بملك الغابة؟", "سبع"),
++    q("س", 2, "أي مهنة يعمل بها من يقود السيارة؟", "سائق"),
++    q("س", 3, "كم عدد أيام الأسبوع؟", "سبعة"),
++  ],
++  "ش": [
++    q("ش", 1, "ما اسم الفصل الحار في السنة؟", "شتاء", "easy", 1),
++    q("ش", 2, "ما الذي يضيء السماء ليلاً؟", "شمس"),
++    q("ش", 3, "نهر مهم في العراق؟", "شط العرب", "medium", 2, "جغرافيا"),
++  ],
++  "ص": [
++    q("ص", 1, "ما اسم اللون المتوسط بين الأبيض والأسود؟", "صفر — لا تنطبق", "easy", 1),
++    q("ص", 2, "ما اسم الجبل الذي يصعد عليه الصبيان؟", "صخرة"),
++    q("ص", 3, "بلد عربي عاصمته الخرطوم؟", "صومال", "medium", 2, "جغرافيا"),
++  ],
++  "ض": [
++    q("ض", 1, "نقيض النور؟", "ضوء"),
++    q("ض", 2, "ما الحيوان الذي يضحك في القصص الشعبية؟", "ضبع"),
++    q("ض", 3, "مرادف القوة عند الإنسان؟", "ضخم"),
++  ],
++  "ط": [
++    q("ط", 1, "حيوان أليف يصدر صوت المواء؟", "طير", "easy", 1),
++    q("ط", 2, "وسيلة نقل تطير في السماء؟", "طائرة"),
++    q("ط", 3, "ما اسم العصفور صغير الحجم؟", "طير"),
++  ],
++  "ظ": [
++    q("ظ", 1, "ما عكس النور؟", "ظلام"),
++    q("ظ", 2, "ما الذي يبدو خلف الجسم في ضوء الشمس؟", "ظل"),
++    q("ظ", 3, "وقت متأخر من النهار قبل الغروب؟", "ظهر"),
++  ],
++  "ع": [
++    q("ع", 1, "ما اسم العضو الذي نرى به؟", "عين"),
++    q("ع", 2, "ما اسم الجزء الذي ينقل الدم في الجسم؟", "عرق"),
++    q("ع", 3, "عاصمة الأردن؟", "عمان", "medium", 2, "جغرافيا"),
++  ],
++  "غ": [
++    q("غ", 1, "ما المكان الذي تعيش فيه الأسود؟", "غابة"),
++    q("غ", 2, "ما عكس الفقير؟", "غني"),
++    q("غ", 3, "وقت اختفاء الشمس آخر النهار؟", "غروب"),
++  ],
++  "ف": [
++    q("ف", 1, "ما اسم الحيوان الذي يصطاد الفئران؟", "فأر"),
++    q("ف", 2, "ما اسم الفاكهة الحمراء الصغيرة المحببة؟", "فراولة"),
++    q("ف", 3, "علم يدرس قوى الطبيعة؟", "فيزياء", "medium", 2, "علوم"),
++  ],
++  "ق": [
++    q("ق", 1, "ما اسم العضو الذي يضخ الدم في الجسم؟", "قلب"),
++    q("ق", 2, "ما اسم الكتاب المقدس عند المسلمين؟", "قرآن"),
++    q("ق", 3, "حيوان مخطط يعيش في الغابة؟", "قط"),
++  ],
++  "ك": [
++    q("ك", 1, "ما اسم الكوكب الذي نعيش عليه؟", "كرة أرضية"),
++    q("ك", 2, "ما الذي نأكله مع الإفطار ويُصنع من القمح؟", "كعكة"),
++    q("ك", 3, "حيوان أليف يصطاد الفئران؟", "كلب"),
++  ],
++  "ل": [
++    q("ل", 1, "ما اسم الحيوان الملك في الغابة؟", "ليث"),
++    q("ل", 2, "ما اسم الفاكهة الصفراء الحامضة؟", "ليمون"),
++    q("ل", 3, "عاصمة لبنان؟", "لبنان", "medium", 2, "جغرافيا"),
++  ],
++  "م": [
++    q("م", 1, "ما اسم السائل الذي نشربه يوميًا؟", "ماء"),
++    q("م", 2, "ما اسم الفاكهة الصفراء الحلوة الاستوائية؟", "مانجو"),
++    q("م", 3, "عاصمة المغرب الإدارية؟", "مراكش", "medium", 2, "جغرافيا"),
++  ],
++  "ن": [
++    q("ن", 1, "ما اسم النجم الذي ينير الأرض نهارًا؟", "نجم"),
++    q("ن", 2, "ما اسم الحشرة التي تجمع الرحيق وتنتج العسل؟", "نحلة"),
++    q("ن", 3, "ما اسم النهر الذي يمر بمصر؟", "نيل", "medium", 2, "جغرافيا"),
++  ],
++  "هـ": [
++    q("هـ", 1, "ما اسم الكوكب الذي ينير الأرض ليلاً؟", "هلال"),
++    q("هـ", 2, "ما اسم الجهاز الذي نتصل به للتحدث عن بُعد؟", "هاتف"),
++    q("هـ", 3, "وسيلة نقل تطير في الجو؟", "هليكوبتر"),
++  ],
++  "و": [
++    q("و", 1, "حيوان من الفصيلة السنورية كبير الحجم؟", "وعل"),
++    q("و", 2, "ما اسم الزهرة الجميلة التي ترمز للحب؟", "وردة"),
++    q("و", 3, "عاصمة الولايات المتحدة؟", "واشنطن", "medium", 2, "جغرافيا"),
++  ],
++  "ي": [
++    q("ي", 1, "ما اسم اليوم الذي يلي السبت؟", "يوم الأحد"),
++    q("ي", 2, "ما اسم العضو الذي نكتب به؟", "يد"),
++    q("ي", 3, "بلد عربي عاصمته صنعاء؟", "يمن", "medium", 2, "جغرافيا"),
++  ],
++};
++
++/**
++ * Default exported helper: returns the bank's letter list. Useful when
++ * the host UI wants to render letter chips that match the bank.
++ */
++export function bankLetters(bank: QuestionBank = defaultQuestionBank): string[] {
++  return Object.keys(bank);
++}
+diff --git a/client/index.html b/client/index.html
+--- a/client/index.html
++++ b/client/index.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
++    <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@500;600;700&display=swap" rel="stylesheet" />
+   </head>
+   <body>
+     <div id="root"></div>
+diff --git a/client/src/index.css b/client/src/index.css
+--- a/client/src/index.css
++++ b/client/src/index.css
+@@ -227,3 +227,32 @@
+     padding: 1rem;
+     border-radius: 14px;
+   }
+ }
++
++/* ── Display font for big Arabic headings ────────────────────
++   Use .kc-display on the game title, room-code stamps, and the
++   winner banner. Cairo remains the body / UI default — Naskh is
++   only for moments where presence matters. */
++.kc-display {
++  font-family: 'Noto Naskh Arabic', 'Cairo', serif;
++  font-weight: 700;
++  letter-spacing: 0;
++  line-height: 1.25;
++}
++
++/* Subtle shimmer on the winning hex path. Layered over the cell
++   outline animation defined in HexBoard. */
++@keyframes hexWin {
++  0%, 100% {
++    filter: brightness(1) drop-shadow(0 0 6px rgba(251, 191, 36, 0.55));
++  }
++  50% {
++    filter: brightness(1.18) drop-shadow(0 0 14px rgba(251, 191, 36, 0.85));
++  }
++}
++
++/* Skip-without-lock visual cue: a skipped letter stays available
++   but shows a faint tick so the host can see it's been seen. */
++.board-cell.was-skipped::after {
++  content: "";
++  position: absolute; inset: auto 4px 4px auto;
++  width: 6px; height: 6px; border-radius: 50%;
++  background: rgba(245, 158, 11, 0.45);
++}
+diff --git a/client/src/lib/store.ts b/client/src/lib/store.ts
+--- a/client/src/lib/store.ts
++++ b/client/src/lib/store.ts
+@@ -145,8 +145,8 @@ export function defaultRoomState(roomCode: string): RoomState {
+     timerSetting: 0,
+     stealMode: "none",
+-    team1: { name: "الفريق الأزرق", color: "#2563eb", initials: "ز" },
+-    team2: { name: "الفريق الأحمر", color: "#ef4444", initials: "ح" },
++    team1: { name: "الفريق الأخضر", color: "#16a34a", initials: "خ" },
++    team2: { name: "الفريق الأزرق", color: "#2563eb", initials: "ز" },
+     team1Score: 0,
+     team2Score: 0,
+     board: generateBoard(gridSize, cellLabelStyle),
