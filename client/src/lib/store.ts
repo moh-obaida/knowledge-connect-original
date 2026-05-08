@@ -195,6 +195,9 @@ export function checkWinner(board: BoardCell[], gridSize: number): 0 | 1 | 2 {
 }
 export function getHexNeighbors(index: number, size: number): number[] {
   const r = Math.floor(index / size), c = index % size;
+  // Board rendering uses odd rows shifted to the right (odd-r horizontal layout).
+  // Neighbor offsets must follow the same coordinate system to correctly detect
+  // curved / zigzag connected paths for Hex wins.
   const deltas = r % 2 === 0
     ? [[-1, 0], [-1, -1], [0, -1], [0, 1], [1, 0], [1, -1]]
     : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];

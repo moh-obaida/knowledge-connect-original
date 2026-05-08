@@ -576,7 +576,7 @@ export default function HostView() {
     const scoreUp = team===1 ? { team1Score: room.team1Score+pts } : { team2Score: room.team2Score+pts };
     undoStackRef.current.push({ type: "claim", cellId, team, points: pts, previousActiveTeam: room.activeTeam });
     const winner = checkWinner(nb, room.gridSize);
-    const winMsg = winner===1 ? `فاز ${room.team1.name}!` : winner===2 ? `فاز ${room.team2.name}!` : "";
+    const winMsg = winner===1 ? "فاز الفريق الأزرق!" : winner===2 ? "فاز الفريق الأحمر!" : "";
     await push({ board:nb, ...scoreUp, questionStatus:"correct", selectedCellId:"", activeQuestion:null,
       answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
       timerRunning:false, timerValue:0, timerMax:0,
