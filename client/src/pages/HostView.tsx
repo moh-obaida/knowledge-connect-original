@@ -873,8 +873,9 @@ export default function HostView() {
 
   const useTemplate = async (tpl: StarterTemplate) => {
     if (!room) return;
-    const ok = window.confirm("سيتم استبدال مجموعة الأسئلة الحالية بهذا القالب. هل تريد المتابعة؟");
-    if (!ok) return;
+    const mode = window.prompt("اختر طريقة التحميل:\n1) استبدال بنك الأسئلة الحالي\n2) دمج مع بنك الأسئلة الحالي\n\nاكتب 1 أو 2", "1");
+    if (!mode || (mode !== "1" && mode !== "2")) return;
+    const shouldMerge = mode === "2";
     try {
       let skipped = 0;
       let missingLetters = 0;
@@ -907,7 +908,9 @@ export default function HostView() {
           }
         }
         if (!bank.length) missingLetters += 1;
-        const first = bank[0];
+        const existing = Array.isArray((cell as any).questionBank) ? (cell as any).questionBank : [];
+        const finalBank = shouldMerge ? [...existing, ...bank] : bank;
+        const first = finalBank[0];
         return {
           ...cell,
           question: first?.question || "",
@@ -916,12 +919,12 @@ export default function HostView() {
           difficulty: (first?.difficulty || "medium") as BoardCell["difficulty"],
           hint: first?.hint || "",
           explanation: first?.explanation || "",
-          ...( { questionBank: bank } as any),
+          ...( { questionBank: finalBank } as any),
         };
       });
       await push({ board: nextBoard });
       if (skipped > 0) showToast.warning("تم تجاهل بعض الأسئلة لأنها لا تطابق الحروف المحددة.");
-      showToast.success("تم تحميل القالب وتوزيع الأسئلة على جميع الحروف.");
+      showToast.success(shouldMerge ? "تم دمج القالب مع بنك الأسئلة الحالي." : "تم تحميل القالب وتوزيع الأسئلة على جميع الحروف.");
       if (missingLetters > 0) showToast.info("تم تحميل القالب، لكن بعض الحروف لا تحتوي على أسئلة.");
     } catch {
       showToast.error("تعذر تحميل القالب. يرجى المحاولة مرة أخرى.");
@@ -936,7 +939,7 @@ export default function HostView() {
       const bank = (Array.isArray((c as any).questionBank) && (c as any).questionBank.length ? (c as any).questionBank : (c.question ? [{ question:c.question, answer:c.answer, category:c.category||"غير مصنف", difficulty:c.difficulty, points:c.points||1, hint:c.hint||"", explanation:c.explanation||"", letter:c.label }] : []))
         .map((q:any)=>normalizeTemplateQuestion(q, c.label, c.category || "غير مصنف"));
       const invalid = bank.map((q:any)=>validateQuestion(normalizeQuestion({ question:q.question, answer:q.answer, type:q.type, choices:q.choices, letter:q.letter, imageUrl:q.imageUrl }))).filter((x:any)=>!x.valid);
-      if (invalid.length) showToast.warning("Question text is required.");
+      if (invalid.length) showToast.warning("نص السؤال مطلوب.");
       return { cellId:c.id, label:c.label, questionBank: bank };
     });
     const totalQuestions = boardBanks.reduce((n,b)=>n+b.questionBank.length,0);
@@ -1703,7 +1706,7 @@ export default function HostView() {
             <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginInlineEnd: "0.5rem" }}>التحكم أثناء اللعب:</div>
             <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={swapActiveTeam}>🔄 تبديل الفريق النشط</button>
             <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={undoLastAction}>↶ إلغاء آخر حركة</button>
-            <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={() => { if (room) showToast.success("تم حفظ اللعبة"); }}>💾 حفظ اللعبة</button>
+            <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={() => { exportBoard(); showToast.info("تم حفظ نسخة محلية من اللوحة بصيغة JSON."); }}>💾 حفظ اللعبة</button>
             <button className="btn-danger" style={{ fontSize: "0.78rem", marginInlineStart: "auto" }} onClick={endGame}>🏁 إنهاء اللعبة</button>
           </div>
           <div className="kc-card" style={{ marginBottom:"0.85rem" }}>
