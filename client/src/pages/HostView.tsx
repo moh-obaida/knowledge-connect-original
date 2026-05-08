@@ -477,10 +477,11 @@ export default function HostView() {
       timerRef.current = setInterval(async () => {
         const cur = roomRef.current;
         if (!cur?.timerRunning) { clearInterval(timerRef.current!); return; }
-        const nv = cur.timerValue - 1;
+        const nv = Math.max(0, cur.timerValue - 1);
         if (nv <= 0) {
           clearInterval(timerRef.current!);
           await updateRoom(cur.roomCode, { timerValue:0, timerRunning:false, questionStatus:"time_up" });
+          showToast.info("انتهى الوقت");
         } else {
           await updateRoom(cur.roomCode, { timerValue:nv });
         }
@@ -489,7 +490,7 @@ export default function HostView() {
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [room?.timerRunning]);
+  }, [room?.timerRunning, room?.roomCode]);
 
   const confirm = (msg: string, action: ()=>void) => { setConfirmMsg(msg); setConfirmAction(()=>action); };
   const cellHasQuestions = (cell: BoardCell) => {
@@ -550,7 +551,7 @@ export default function HostView() {
         activeQuestion: aq, selectedCellId: cell.id,
         answerVisibleToHost: false, answerVisibleToParticipants: false,
         hintVisibleToParticipants: false, questionStatus: "active",
-        timerValue: room.timerSetting, timerRunning: false,
+        timerValue: room.timerSetting > 0 ? room.timerSetting : 0, timerMax: room.timerSetting > 0 ? room.timerSetting : 0, timerRunning: room.timerSetting > 0,
       });
     }
   };
@@ -576,7 +577,9 @@ export default function HostView() {
     undoStackRef.current.push({ type: "claim", cellId, team, points: pts, previousActiveTeam: room.activeTeam });
     const winner = checkWinner(nb, room.gridSize);
     const winMsg = winner===1 ? `فاز ${room.team1.name}!` : winner===2 ? `فاز ${room.team2.name}!` : "";
-    await push({ board:nb, ...scoreUp, questionStatus:"correct", selectedCellId:"",
+    await push({ board:nb, ...scoreUp, questionStatus:"correct", selectedCellId:"", activeQuestion:null,
+      answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
+      timerRunning:false, timerValue:0, timerMax:0,
       winnerMessage: winMsg, winnerTeam: winner,
       gameStatus: winMsg ? "finished" : room.gameStatus });
     if (winMsg) {
@@ -636,7 +639,7 @@ export default function HostView() {
       const pathWinner = checkWinner(room.board, room.gridSize);
       const winner: 0 | 1 | 2 = gameMode === "connection" ? pathWinner : (t1 > t2 ? 1 : t2 > t1 ? 2 : 0);
       const msg = winner === 1 ? `🏆 ${room.team1.name} فاز!` : winner === 2 ? `🏆 ${room.team2.name} فاز!` : "🤝 تعادل!";
-      await push({ winnerMessage: msg, winnerTeam: winner, gameStatus: "finished" });
+      await push({ winnerMessage: msg, winnerTeam: winner, gameStatus: "finished", timerRunning:false, timerValue:0, timerMax:0, activeQuestion:null, selectedCellId:"", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
       try {
         const finishedRoom: RoomState = { ...room, winnerTeam: winner, winnerMessage: msg, gameStatus: "finished" } as RoomState;
         const dedupeKey = `${finishedRoom.roomCode}-${winner}-${finishedRoom.team1Score}-${finishedRoom.team2Score}`;
@@ -731,9 +734,15 @@ export default function HostView() {
     }
   };
 
-  const startTimer = () => push({ timerRunning:true });
+  const startTimer = () => {
+    if (!room) return;
+    if (room.timerSetting <= 0) { showToast.info("بدون مؤقت"); return; }
+    push({ timerRunning:true, timerMax: room.timerSetting });
+  };
   const pauseTimer = () => push({ timerRunning:false });
-  const resetTimer = () => { if (!room) return; push({ timerRunning:false, timerValue:room.timerSetting }); };
+  const resumeTimer = () => { if (!room || room.timerValue <= 0) return; push({ timerRunning:true }); };
+  const addTimer15 = () => { if (!room) return; push({ timerValue: (room.timerValue || 0) + 15, timerMax: Math.max(room.timerMax || 0, (room.timerValue || 0) + 15) }); };
+  const resetTimer = () => { if (!room) return; push({ timerRunning:false, timerValue:0, timerMax:0 }); };
   const addScore = (t: 1|2, d: number) => {
     if (!room) return;
     if (t===1) push({ team1Score: Math.max(0, room.team1Score+d) });
@@ -743,7 +752,7 @@ export default function HostView() {
     if (!room) return;
     const msg = t==="draw" ? "🤝 تعادل!" : t===1 ? `🏆 ${room.team1.name} فاز!` : `🏆 ${room.team2.name} فاز!`;
     const winnerTeam: 0|1|2 = t==="draw" ? 0 : t;
-    push({ winnerMessage:msg, winnerTeam, gameStatus:"finished" });
+    push({ winnerMessage:msg, winnerTeam, gameStatus:"finished", timerRunning:false, timerValue:0, timerMax:0, activeQuestion:null, selectedCellId:"", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
     try {
       const finishedRoom: RoomState = { ...room, winnerTeam, winnerMessage: msg, gameStatus: "finished" } as RoomState;
       const dedupeKey = `${finishedRoom.roomCode}-${winnerTeam}-${finishedRoom.team1Score}-${finishedRoom.team2Score}`;
@@ -776,8 +785,8 @@ export default function HostView() {
       const rb = room.board.map(c=>({...c, claimedBy:0 as const, used:false}));
       await push({ board:rb, team1Score:0, team2Score:0, activeQuestion:null, selectedCellId:"",
         answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
-        timerRunning:false, timerValue:room.timerSetting, winnerMessage:"", winnerTeam:0,
-        questionStatus:"idle", gameStatus:"lobby", activeTeam:1, roundNumber:1 });
+        timerRunning:false, timerValue:0, timerMax:0, winnerMessage:"", winnerTeam:0,
+        questionStatus:"idle", gameStatus:"active", activeTeam:1, roundNumber:1 });
       savedResultRef.current.clear();
       showToast.success("تم إعادة ضبط اللعبة");
     });
@@ -785,7 +794,7 @@ export default function HostView() {
 
   const returnToTemplates = async () => {
     if (!room) return;
-    await push({ winnerMessage: "", winnerTeam: 0, gameStatus: "lobby", activeQuestion: null, selectedCellId: "", questionStatus: "idle", timerRunning: false });
+    await push({ winnerMessage: "", winnerTeam: 0, gameStatus: "lobby", activeQuestion: null, selectedCellId: "", questionStatus: "idle", timerRunning: false, timerValue: 0, timerMax: 0, answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
     savedResultRef.current.clear();
     setActiveTab("setup");
     setHostViewMode("dashboard");
@@ -801,7 +810,7 @@ export default function HostView() {
   const cancelQuestion = async () => {
     if (!room) return;
     await push({ activeQuestion: null, selectedCellId: "", answerVisibleToHost: false,
-      answerVisibleToParticipants: false, hintVisibleToParticipants: false, questionStatus: "idle" });
+      answerVisibleToParticipants: false, hintVisibleToParticipants: false, questionStatus: "idle", timerRunning:false, timerValue:0, timerMax:0 });
     showToast.info("تم إلغاء السؤال الحالي");
   };
 
@@ -1754,16 +1763,18 @@ export default function HostView() {
                   <div style={{ fontSize:"0.8rem", color:"#64748b" }}>ثانية</div>
                   <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
                     {!room.timerRunning
-                      ? <button className="btn-green" style={{ fontSize:"0.8rem" }} onClick={startTimer}>▶ بدء</button>
-                      : <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={pauseTimer}>⏸ إيقاف</button>}
-                    <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={resetTimer}>↺ إعادة</button>
+                      ? <button className="btn-green" style={{ fontSize:"0.8rem" }} onClick={room.timerValue > 0 ? resumeTimer : startTimer}>{room.timerValue > 0 ? "استئناف" : "بدء المؤقت"}</button>
+                      : <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={pauseTimer}>إيقاف مؤقت</button>}
+                    <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={addTimer15}>+15 ثانية</button>
+                    <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={resetTimer}>إعادة</button>
                   </div>
                 </div>
                 <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem", flexWrap:"wrap" }}>
                   {[15,30,45,60,90,120].map(s=>(
                     <button key={s} className="btn-secondary" style={{ fontSize:"0.72rem", padding:"0.2rem 0.55rem" }}
-                      onClick={()=>push({ timerSetting:s, timerValue:s, timerRunning:false })}>{s}ث</button>
+                      onClick={()=>push({ timerSetting:s, timerValue:0, timerMax:s, timerRunning:false })}>{s}ث</button>
                   ))}
+                  <span style={{ fontSize:"0.75rem", color:"#94a3b8", alignSelf:"center" }}>{room.timerSetting <= 0 ? "بدون مؤقت" : ""}</span>
                 </div>
               </div>
 
