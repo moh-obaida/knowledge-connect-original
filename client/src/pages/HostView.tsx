@@ -20,6 +20,7 @@ import TemplatePreviewModal from "../components/host/TemplatePreviewModal";
 import HostLobbyCard from "../components/host/HostLobbyCard";
 import JoinQRCard from "../components/host/JoinQRCard";
 import ResultPreviewModal from "../components/host/ResultPreviewModal";
+import LiveQuestionModal from "../components/host/LiveQuestionModal";
 import { saveGameResult, loadGameResults, deleteGameResult, exportResultsJSON, exportResultsCSV, summarizeResult, aggregateResults, type GameResult } from "../lib/gameResults";
 
 // ── URL helpers ───────────────────────────────────────────────
@@ -435,6 +436,8 @@ export default function HostView() {
   const savedResultRef = useRef<Set<string>>(new Set());
   const [savedResults, setSavedResults] = useState<GameResult[]>(() => (typeof window !== "undefined" ? loadGameResults() : []));
   const [previewResult, setPreviewResult] = useState<GameResult | null>(null);
+  const [liveCellId, setLiveCellId] = useState<string>("");
+  const undoStackRef = useRef<Array<{ type: "claim"; cellId: string; team: 1 | 2; points: number; previousActiveTeam: 1 | 2 }>>([]);
 
   useEffect(() => { roomRef.current = room; }, [room]);
   useEffect(() => { localStorage.setItem("kc_appearance_mode", appearanceMode); }, [appearanceMode]);
@@ -522,8 +525,12 @@ export default function HostView() {
     if (room.gameStatus === "lobby" || activeTab === "setup") {
       setEditingCell(cell);
     } else {
-      if (!cellHasQuestions(cell)) { showToast.warning("لا يوجد سؤال مرتبط بهذا الحرف حالياً."); return; }
       if (cell.claimedBy !== 0) { showToast.info("هذا الحرف محجوز بالفعل."); return; }
+      setLiveCellId(cell.id);
+      if (!cellHasQuestions(cell)) {
+        push({ activeQuestion: null, selectedCellId: cell.id, questionStatus: "idle" });
+        return;
+      }
       const bank = Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank : [{ question: cell.question, answer: cell.answer, category: cell.category, difficulty: cell.difficulty, points: cell.points, hint: cell.hint, explanation: cell.explanation }];
       const first = bank[0];
       const fType = (first?.type === "mcq" || first?.type === "tf") ? first.type : "fill";
@@ -554,16 +561,18 @@ export default function HostView() {
   };
 
   // Claim cell
-  const claimCell = async (cellId: string) => {
+  const claimCell = async (cellId: string, forTeam?: 1 | 2) => {
     if (!room || answerActionBusy) return;
     const current = room.board.find(c => c.id===cellId);
     if (!current || current.claimedBy !== 0 || current.used || room.gameStatus === "finished") return;
     setAnswerActionBusy(true);
-    const nb = room.board.map(c => c.id===cellId ? {...c, claimedBy: room.activeTeam as 0|1|2, used:true} : c);
+    const team = (forTeam || room.activeTeam) as 1 | 2;
+    const nb = room.board.map(c => c.id===cellId ? {...c, claimedBy: team, used:true} : c);
     const pts = room.activeQuestion?.points || 1;
-    const scoreUp = room.activeTeam===1 ? { team1Score: room.team1Score+pts } : { team2Score: room.team2Score+pts };
+    const scoreUp = team===1 ? { team1Score: room.team1Score+pts } : { team2Score: room.team2Score+pts };
+    undoStackRef.current.push({ type: "claim", cellId, team, points: pts, previousActiveTeam: room.activeTeam });
     const winner = checkWinner(nb, room.gridSize);
-    const winMsg = winner===1 ? "فاز الفريق الأزرق!" : winner===2 ? "فاز الفريق الأحمر!" : "";
+    const winMsg = winner===1 ? `فاز ${room.team1.name}!` : winner===2 ? `فاز ${room.team2.name}!` : "";
     await push({ board:nb, ...scoreUp, questionStatus:"correct", selectedCellId:"",
       winnerMessage: winMsg, winnerTeam: winner,
       gameStatus: winMsg ? "finished" : room.gameStatus });
@@ -583,6 +592,59 @@ export default function HostView() {
   };
 
   const markCorrect = () => { if (room?.activeQuestion && !answerActionBusy) claimCell(room.activeQuestion.cellId); };
+  const markCorrectForTeam = (team: 1 | 2) => { if (room?.activeQuestion && !answerActionBusy) claimCell(room.activeQuestion.cellId, team); };
+
+  const swapActiveTeam = () => {
+    if (!room) return;
+    const next: 1 | 2 = room.activeTeam === 1 ? 2 : 1;
+    push({ activeTeam: next });
+    showToast.info(`الدور انتقل إلى ${next === 1 ? room.team1.name : room.team2.name}`);
+  };
+
+  const undoLastAction = async () => {
+    if (!room) return;
+    const last = undoStackRef.current.pop();
+    if (!last) { showToast.info("لا توجد حركة لإلغائها"); return; }
+    if (last.type === "claim") {
+      const nb = room.board.map(c => c.id === last.cellId ? { ...c, claimedBy: 0 as const, used: false } : c);
+      const scoreFix = last.team === 1
+        ? { team1Score: Math.max(0, room.team1Score - last.points) }
+        : { team2Score: Math.max(0, room.team2Score - last.points) };
+      await push({
+        board: nb,
+        ...scoreFix,
+        winnerMessage: "",
+        winnerTeam: 0,
+        gameStatus: room.gameStatus === "finished" ? "active" : room.gameStatus,
+        questionStatus: "idle",
+        activeTeam: last.previousActiveTeam,
+      });
+      savedResultRef.current.clear();
+      showToast.success("تم التراجع عن الحركة الأخيرة");
+    }
+  };
+
+  const endGame = () => {
+    if (!room) return;
+    confirm("هل تريد إنهاء اللعبة الآن؟ سيتم حفظ النتيجة الحالية.", async () => {
+      const t1 = room.team1Score;
+      const t2 = room.team2Score;
+      const winner: 0 | 1 | 2 = t1 > t2 ? 1 : t2 > t1 ? 2 : 0;
+      const msg = winner === 1 ? `🏆 ${room.team1.name} فاز!` : winner === 2 ? `🏆 ${room.team2.name} فاز!` : "🤝 تعادل!";
+      await push({ winnerMessage: msg, winnerTeam: winner, gameStatus: "finished" });
+      try {
+        const finishedRoom: RoomState = { ...room, winnerTeam: winner, winnerMessage: msg, gameStatus: "finished" } as RoomState;
+        const dedupeKey = `${finishedRoom.roomCode}-${winner}-${finishedRoom.team1Score}-${finishedRoom.team2Score}`;
+        if (!savedResultRef.current.has(dedupeKey)) {
+          saveGameResult(finishedRoom);
+          savedResultRef.current.add(dedupeKey);
+          setSavedResults(loadGameResults());
+        }
+      } catch { /* ignore */ }
+      showToast.success("تم إنهاء اللعبة وحفظ النتيجة");
+    });
+  };
+
   const markWrong = async () => {
     if (!room) return;
     await push({ questionStatus:"wrong" });
@@ -1239,6 +1301,24 @@ export default function HostView() {
       {previewTemplate && (
         <TemplatePreviewModal previewTemplate={previewTemplate as any} onClose={()=>setPreviewTemplate(null)} />
       )}
+      {liveCellId && room && (() => {
+        const liveCell = room.board.find(c => c.id === liveCellId);
+        if (!liveCell) return null;
+        return (
+          <LiveQuestionModal
+            room={room}
+            cell={liveCell}
+            activeQuestion={room.activeQuestion}
+            onClose={() => setLiveCellId("")}
+            onShowAnswer={() => push({ answerVisibleToHost: true })}
+            onAwardTeam={(team) => { markCorrectForTeam(team); setLiveCellId(""); }}
+            onSkip={() => { skipQ(); setLiveCellId(""); }}
+            onReturnToBank={() => { cancelQuestion(); setLiveCellId(""); }}
+            onRevealToParticipants={() => push({ answerVisibleToParticipants: !room.answerVisibleToParticipants, answerVisibleToHost: true, questionStatus: room.answerVisibleToParticipants ? room.questionStatus : "answer_revealed" })}
+            onAddQuestion={() => { setLiveCellId(""); setEditingCell(liveCell); }}
+          />
+        );
+      })()}
 
       {/* Winner overlay */}
       {room.winnerMessage && (
@@ -1341,6 +1421,111 @@ export default function HostView() {
               </div>
             </div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))", gap:"1.25rem" }}>
+            {/* Template / question-bank health */}
+            <div className="kc-card" style={{ gridColumn: "1 / -1" }}>
+              <div className="section-title">صحة بنك الأسئلة</div>
+              {(() => {
+                const cells = room.board;
+                const completedCells = cells.filter(c => cellHasQuestions(c)).length;
+                const emptyCells = cells.length - completedCells;
+                const totalQs = cells.reduce((n, c) => {
+                  const bank = (c as any).questionBank;
+                  if (Array.isArray(bank) && bank.length) return n + bank.filter((q:any) => String(q?.question||"").trim()).length;
+                  return n + (c.question.trim() ? 1 : 0);
+                }, 0);
+                const avg = completedCells > 0 ? (totalQs / completedCells).toFixed(1) : "0";
+                const ready = emptyCells === 0 && totalQs > 0;
+                const warn = emptyCells > Math.max(2, Math.floor(cells.length * 0.3));
+                const goToFirstEmpty = () => {
+                  const firstEmpty = sortedBoard(cells).find(c => !cellHasQuestions(c));
+                  if (firstEmpty) setEditingCell(firstEmpty);
+                };
+                const distributeQuestions = () => {
+                  const allBank: any[] = [];
+                  cells.forEach(c => {
+                    const b = (c as any).questionBank;
+                    if (Array.isArray(b) && b.length) allBank.push(...b.filter((q:any) => String(q?.question||"").trim()));
+                    else if (c.question.trim()) allBank.push({ question:c.question, answer:c.answer, category:c.category, difficulty:c.difficulty, points:c.points, hint:c.hint, explanation:c.explanation, letter:c.label });
+                  });
+                  if (!allBank.length) { showToast.warning("لا توجد أسئلة لتوزيعها."); return; }
+                  // Group by first letter of answer (or letter field), then distribute round-robin into matching cells.
+                  const byLetter = new Map<string, any[]>();
+                  allBank.forEach(q => {
+                    const letter = String(q.letter || q.answer || "").trim().charAt(0);
+                    const norm = ARABIC_LETTER_NORMALIZE[letter] || letter;
+                    if (!byLetter.has(norm)) byLetter.set(norm, []);
+                    byLetter.get(norm)!.push(q);
+                  });
+                  const nextBoard = cells.map(c => {
+                    const norm = ARABIC_LETTER_NORMALIZE[c.label] || c.label;
+                    const matched = byLetter.get(norm) || [];
+                    if (matched.length === 0) return c;
+                    const first = matched[0];
+                    return {
+                      ...c,
+                      question: first.question || "",
+                      answer: first.answer || "",
+                      category: first.category || c.category,
+                      difficulty: (first.difficulty || c.difficulty) as BoardCell["difficulty"],
+                      points: Number(first.points) || c.points || 1,
+                      hint: first.hint || "",
+                      explanation: first.explanation || "",
+                      ...( { questionBank: matched } as any ),
+                    };
+                  });
+                  push({ board: nextBoard });
+                  showToast.success("تم توزيع الأسئلة على الحروف المطابقة.");
+                };
+                const repairTemplate = () => {
+                  // Repair: drop banks with empty questions; coerce defaults.
+                  const nextBoard = cells.map(c => {
+                    const bank = (c as any).questionBank;
+                    if (!Array.isArray(bank)) return c;
+                    const cleaned = bank.filter((q:any) => String(q?.question||"").trim() && String(q?.answer||"").trim());
+                    return { ...c, ...( { questionBank: cleaned } as any ) };
+                  });
+                  push({ board: nextBoard });
+                  showToast.success("تم تنظيف القالب وإزالة الأسئلة الفارغة.");
+                };
+                return (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.5rem", marginBottom: "0.7rem" }}>
+                      <div style={{ background: "#141e2d", borderRadius: 10, padding: "0.55rem 0.7rem", border: "1px solid #1a2332" }}>
+                        <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>الحروف المكتملة</div>
+                        <div style={{ fontWeight: 800, color: "#22c55e" }}>{completedCells} / {cells.length}</div>
+                      </div>
+                      <div style={{ background: "#141e2d", borderRadius: 10, padding: "0.55rem 0.7rem", border: "1px solid #1a2332" }}>
+                        <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>حروف بدون أسئلة</div>
+                        <div style={{ fontWeight: 800, color: emptyCells > 0 ? "#ef4444" : "#22c55e" }}>{emptyCells}</div>
+                      </div>
+                      <div style={{ background: "#141e2d", borderRadius: 10, padding: "0.55rem 0.7rem", border: "1px solid #1a2332" }}>
+                        <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>إجمالي الأسئلة</div>
+                        <div style={{ fontWeight: 800, color: "#f0ede8" }}>{totalQs}</div>
+                      </div>
+                      <div style={{ background: "#141e2d", borderRadius: 10, padding: "0.55rem 0.7rem", border: "1px solid #1a2332" }}>
+                        <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>متوسط لكل حرف</div>
+                        <div style={{ fontWeight: 800, color: "#f0ede8" }}>{avg}</div>
+                      </div>
+                      <div style={{ background: ready ? "rgba(34,197,94,0.12)" : "#141e2d", borderRadius: 10, padding: "0.55rem 0.7rem", border: `1px solid ${ready ? "rgba(34,197,94,0.4)" : "#1a2332"}` }}>
+                        <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>هل القالب جاهز؟</div>
+                        <div style={{ fontWeight: 800, color: ready ? "#22c55e" : "#f59e0b" }}>{ready ? "جاهز للعب ✅" : "بحاجة لإكمال"}</div>
+                      </div>
+                    </div>
+                    {warn && (
+                      <div style={{ background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.35)", color: "#fcd34d", borderRadius: 10, padding: "0.55rem 0.75rem", fontSize: "0.85rem", marginBottom: "0.6rem" }}>
+                        ⚠ يوجد {emptyCells} حروف بدون أسئلة. أكملها قبل بدء التحدي لتجربة أفضل.
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                      <button className="btn-gold" style={{ fontSize: "0.78rem" }} onClick={goToFirstEmpty} disabled={emptyCells === 0}>إضافة الأسئلة الناقصة</button>
+                      <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={repairTemplate}>إصلاح القالب</button>
+                      <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={distributeQuestions}>توزيع الأسئلة على الحروف</button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
             {/* Board */}
             <div className="kc-card">
               <div className="section-title">لوحة الحروف</div>
@@ -1470,6 +1655,14 @@ export default function HostView() {
 
         {/* ══ TAB: Game ══ */}
         {activeTab==="game" && (
+          <>
+          <div className="kc-card" style={{ marginBottom: "0.85rem", display: "flex", flexWrap: "wrap", gap: "0.4rem", alignItems: "center" }}>
+            <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginInlineEnd: "0.5rem" }}>إجراءات سريعة:</div>
+            <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={swapActiveTeam}>🔄 تبديل الفريق النشط</button>
+            <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={undoLastAction}>↶ إلغاء آخر حركة</button>
+            <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={() => { if (room) showToast.success("تم حفظ اللعبة"); }}>💾 حفظ اللعبة</button>
+            <button className="btn-danger" style={{ fontSize: "0.78rem", marginInlineStart: "auto" }} onClick={endGame}>🏁 إنهاء اللعبة</button>
+          </div>
           <div style={{ display:"grid", gridTemplateColumns: presentationMode ? "1fr" : "1fr 1.4fr", gap:"1.25rem" }}>
             {/* Left: controls */}
             {!presentationMode && <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
@@ -1655,6 +1848,7 @@ export default function HostView() {
               )}
             </div>
           </div>
+          </>
         )}
 
         {/* ══ TAB: Settings ══ */}
@@ -1877,6 +2071,27 @@ function PlayersSettings({ room, roomCode, push }: { room: RoomState; roomCode: 
     catch (e) { console.error(e); showToast.error("فشل الحذف"); }
   };
 
+  const randomizeTeams = async () => {
+    if (!players.length) { showToast.warning("لا يوجد مشاركون لتوزيعهم."); return; }
+    const shuffled = [...players].sort(() => Math.random() - 0.5);
+    try {
+      for (let i = 0; i < shuffled.length; i++) {
+        const team: 1 | 2 = (i % 2 === 0) ? 1 : 2;
+        await assignPlayerTeam(roomCode, shuffled[i].id, team);
+      }
+      showToast.success("تم توزيع المشاركين عشوائياً على الفريقين");
+    } catch (e) { console.error(e); showToast.error("فشل التوزيع العشوائي"); }
+  };
+
+  const clearAllMembers = async () => {
+    if (!players.length) { showToast.info("لا يوجد مشاركون لحذفهم."); return; }
+    if (!window.confirm("هل تريد حذف جميع المشاركين من الغرفة؟")) return;
+    try {
+      for (const p of players) await removePlayer(roomCode, p.id);
+      showToast.success("تم مسح جميع المشاركين");
+    } catch (e) { console.error(e); showToast.error("فشل المسح"); }
+  };
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
       {/* Add single */}
@@ -1923,7 +2138,13 @@ function PlayersSettings({ room, roomCode, push }: { room: RoomState; roomCode: 
 
       {/* Player list */}
       <div className="kc-card">
-        <div className="section-title">المشاركون ({players.length})</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.4rem", marginBottom: "0.6rem" }}>
+          <div className="section-title" style={{ marginBottom: 0 }}>المشاركون ({players.length})</div>
+          <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+            <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={randomizeTeams} disabled={!players.length}>🎲 توزيع عشوائي</button>
+            <button className="btn-danger" style={{ fontSize: "0.78rem" }} onClick={clearAllMembers} disabled={!players.length}>🗑 مسح الأعضاء</button>
+          </div>
+        </div>
         {players.length===0 ? (
           <div style={{ textAlign:"center", padding:"2rem", color:"#3d5068" }}>
             <div style={{ fontSize:"2rem", marginBottom:"0.5rem" }}>👥</div>
