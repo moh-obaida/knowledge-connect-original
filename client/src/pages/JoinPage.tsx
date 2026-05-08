@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { joinRoom } from "../lib/roomOps";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { showToast } from "../components/KcToast";
+import { t } from "../lib/i18n";
+import { useLanguage } from "../hooks/useLanguage";
 
 function getParam(key: string): string {
   if (typeof window === "undefined") return "";
@@ -11,6 +13,8 @@ function getParam(key: string): string {
 
 export default function JoinPage() {
   const [, setLocation] = useLocation();
+  const { language } = useLanguage();
+  const isAr = language === "ar";
   const [roomCode, setRoomCode] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,22 +32,22 @@ export default function JoinPage() {
     const code = roomCode.trim();
     const name = playerName.trim();
     setError("");
-    if (!code) { setError("يرجى إدخال رمز الغرفة."); showToast.error("يرجى إدخال رمز الغرفة."); return; }
-    if (code.length !== 6) { setError("رمز الغرفة يجب أن يتكون من ٦ أرقام."); showToast.error("رمز الغرفة يجب أن يتكون من ٦ أرقام."); return; }
-    if (!name) { setError("يرجى إدخال الاسم."); showToast.error("يرجى إدخال الاسم."); return; }
-    if (!isFirebaseConfigured()) { setError("تعذر الاتصال بالخدمة."); showToast.error("تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا."); return; }
+    if (!code) { setError(t("join.enterRoomCode")); showToast.error(t("join.enterRoomCode")); return; }
+    if (code.length !== 6) { setError(t("join.roomCode6")); showToast.error(t("join.roomCode6")); return; }
+    if (!name) { setError(t("join.enterName")); showToast.error(t("join.enterName")); return; }
+    if (!isFirebaseConfigured()) { setError(t("join.serviceUnavailable")); showToast.error(t("join.serviceRetry")); return; }
     setLoading(true);
     try {
       const playerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const joined = await joinRoom(code, playerId, name);
-      if (!joined) { setError("الغرفة غير موجودة. تأكد من الرمز."); showToast.error("تعذر الاتصال بالغرفة. تحقق من الرمز وحاول مرة أخرى."); setLoading(false); return; }
+      if (!joined) { setError(t("join.roomNotFound")); showToast.error(t("join.connectRoomFailed")); setLoading(false); return; }
       localStorage.setItem("kc_player_id", playerId);
       localStorage.setItem("kc_player_name", name);
       setLocation(`/participant?room=${code}&name=${encodeURIComponent(name)}`);
     } catch (e) {
       console.error(e);
-      setError("حدث خطأ أثناء الانضمام — تحقق من الاتصال بالإنترنت.");
-      showToast.error("حدث خطأ أثناء الانضمام — تحقق من الاتصال بالإنترنت");
+      setError(t("join.joinError"));
+      showToast.error(t("join.joinError"));
     }
     setLoading(false);
   };
@@ -60,19 +64,19 @@ export default function JoinPage() {
     }}>
       {/* Page identity badge */}
       <div style={{ fontSize:"0.72rem", padding:"0.25rem 0.75rem", borderRadius:"9999px", background:"#1a2332", color:"#cbd5e1", marginBottom:"1.25rem", fontWeight:600 }}>
-        🏷 انضم إلى التحدي
+        🏷 {t("join.joinChallenge")}
       </div>
 
       {/* Logo */}
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
         <div style={{ fontSize:"clamp(2.4rem, 8vw, 3.5rem)", fontWeight:900, color:"#f59e0b", fontFamily:"Cairo,sans-serif", lineHeight:1.1 }}>
-          وصلة المعرفة
+          {isAr ? "وصلة المعرفة" : "Knowledge Connect"}
         </div>
         <div style={{ fontSize:"1rem", fontWeight:700, color:"#cbd5e1", marginTop:"0.5rem" }}>
-          انضم إلى التحدي
+          {t("join.joinChallenge")}
         </div>
         <div style={{ fontSize:"0.85rem", color:"#94a3b8", marginTop:"0.3rem" }}>
-          أدخل رمز الغرفة الذي شاركه معك المضيف ثم اكتب اسمك.
+          {t("join.subtitle")}
         </div>
       </div>
 
@@ -86,14 +90,14 @@ export default function JoinPage() {
         boxShadow: "0 25px 60px rgba(0,0,0,0.6)",
       }}>
         <h2 style={{ fontWeight:800, fontSize:"1.2rem", color:"#f0ede8", textAlign:"center", marginBottom:"1.5rem" }}>
-          الانضمام إلى الغرفة
+          {t("join.joinRoom")}
         </h2>
 
         <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
           {/* Room code */}
           <div>
             <label style={{ display:"block", fontSize:"0.82rem", fontWeight:600, color:"#94a3b8", marginBottom:"0.4rem" }}>
-              رمز الغرفة
+              {t("hostHeader.roomCode")}
             </label>
             <input
               type="text"
@@ -102,7 +106,7 @@ export default function JoinPage() {
               value={roomCode}
               onChange={e => setRoomCode(e.target.value.replace(/\D/g, ""))}
               onKeyDown={e => e.key === "Enter" && handleJoin()}
-              placeholder="٦ أرقام"
+              placeholder={t("join.sixDigits")}
               style={{
                 width:"100%", background:"#141e2d", border:"2px solid #1a2332",
                 borderRadius:"12px", padding:"0.75rem 1rem",
@@ -118,14 +122,14 @@ export default function JoinPage() {
           {/* Player name */}
           <div>
             <label style={{ display:"block", fontSize:"0.82rem", fontWeight:600, color:"#94a3b8", marginBottom:"0.4rem" }}>
-              اسمك
+              {t("join.yourName")}
             </label>
             <input
               type="text"
               value={playerName}
               onChange={e => setPlayerName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleJoin()}
-              placeholder="أدخل اسمك"
+              placeholder={t("join.enterYourName")}
               style={{
                 width:"100%", background:"#141e2d", border:"2px solid #1a2332",
                 borderRadius:"12px", padding:"0.75rem 1rem",
@@ -160,12 +164,12 @@ export default function JoinPage() {
             onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.transform="translateY(-2px)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform="translateY(0)"; }}
           >
-            {loading ? "جارٍ الانضمام..." : "انضمام إلى التحدي"}
+            {loading ? t("join.joining") : t("join.joinChallenge")}
           </button>
         </div>
 
         <p style={{ textAlign:"center", fontSize:"0.78rem", color:"#475569", marginTop:"1rem" }}>
-          اطلب رمز الانضمام من المضيف ثم أدخله هنا.
+          {t("join.askHostCode")}
         </p>
       </div>
 
@@ -175,19 +179,19 @@ export default function JoinPage() {
         background:"#0f1623", border:"1px solid #1a2332",
         borderRadius:"16px", padding:"1rem 1.1rem",
       }}>
-        <div style={{ fontWeight:700, color:"#f59e0b", fontSize:"0.82rem", marginBottom:"0.4rem" }}>كيف تنضم؟</div>
+        <div style={{ fontWeight:700, color:"#f59e0b", fontSize:"0.82rem", marginBottom:"0.4rem" }}>{t("join.howToJoin")}</div>
         <ol style={{ listStyle:"decimal", color:"#cbd5e1", fontSize:"0.84rem", lineHeight:1.95, paddingInlineStart:"1.2rem" }}>
-          <li>احصل على رمز الغرفة (٦ أرقام) من المضيف.</li>
-          <li>أدخل الرمز ثم اكتب اسمك.</li>
-          <li>اضغط على "انضمام إلى التحدي" وانتظر بدء المضيف.</li>
+          <li>{t("join.step1")}</li>
+          <li>{t("join.step2")}</li>
+          <li>{t("join.step3")}</li>
         </ol>
       </div>
 
       {/* Host link */}
       <div style={{ marginTop:"1.4rem", textAlign:"center" }}>
         <a href="/" style={{ fontSize:"0.85rem", color:"#94a3b8", textDecoration:"none" }}>
-          هل أنت المضيف؟{" "}
-          <span style={{ color:"#f59e0b", fontWeight:700 }}>العودة إلى لوحة التحكم</span>
+          {t("join.areYouHost")}{" "}
+          <span style={{ color:"#f59e0b", fontWeight:700 }}>{t("join.backDashboard")}</span>
         </a>
       </div>
     </div>
