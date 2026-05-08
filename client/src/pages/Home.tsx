@@ -6,7 +6,7 @@ import { useLanguage } from "../hooks/useLanguage";
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const { t, language, toggleLanguage } = useLanguage();
+  const { t } = useLanguage();
   const profileKey = "kc_host_profile";
   const { settings, textScale } = useAppSettings();
   const appearanceMode = settings.theme === "soft" ? "balanced" : settings.theme === "high-contrast" ? "dark" : settings.theme;
@@ -26,7 +26,7 @@ export default function Home() {
   const [orgName, setOrgName] = useState(parsed?.orgName || "");
 
   const goHost = () => {
-    if (!hostName.trim()) { showToast.warning(language === "ar" ? "يرجى إدخال الاسم." : "Please enter a name."); return; }
+    if (!hostName.trim()) { showToast.warning("يرجى إدخال الاسم."); return; }
     localStorage.setItem(profileKey, JSON.stringify({ hostName: hostName.trim(), className: className.trim(), orgName: orgName.trim() }));
     setLocation("/host");
   };
@@ -44,8 +44,6 @@ export default function Home() {
   return (
     <div style={{ minHeight: "100vh", padding: "1.25rem 1rem", fontSize: `${textScale}rem`, background: bgByMode[appearanceMode] || bgByMode.dark }}>
       <div style={{ width: "100%", maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <div style={{ display:"flex", justifyContent:"flex-end" }}><button className="btn-secondary" onClick={toggleLanguage}>{language === "ar" ? "English" : "العربية"}</button></div>
-
         {/* Hero */}
         <div className="kc-card" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem", padding: "1.5rem" }}>
           <div>
