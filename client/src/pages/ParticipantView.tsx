@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { subscribeToRoom, joinRoom } from "../lib/roomOps";
 import { isFirebaseConfigured } from "../lib/firebase";
 import type { RoomState } from "../lib/store";
+import { normalizeTfCanonical } from "../lib/questionTypes";
 import HexBoard from "../components/HexBoard";
 import { appearanceGradient, appearanceSurface, readAppearanceMode, readVisualTheme, themeAccent } from "../lib/appearance";
 
@@ -275,7 +276,8 @@ export default function ParticipantView() {
               </div>
             </div>
             <HexBoard board={board} gridSize={gridSize} mode="participant"
-              selectedCellId={selectedCellId} team1={team1} team2={team2} />
+              selectedCellId={selectedCellId} team1={team1} team2={team2}
+              questionBankByLetter={room.questionBankByLetter} />
           </div>
 
           {/* Question + timer */}
@@ -339,10 +341,12 @@ export default function ParticipantView() {
                   </div>
                 )}
 
-                {(activeQuestion as any).type === "tf" && (
+                {(activeQuestion as any).type === "tf" && (() => {
+                  const tfCanon = normalizeTfCanonical(activeQuestion.answer);
+                  return (
                   <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.8rem" }}>
-                    {["صحيح","خطأ"].map((c) => {
-                      const isCorrect = answerVisibleToParticipants && c === activeQuestion.answer;
+                    {(["صح","خطأ"] as const).map((c) => {
+                      const isCorrect = answerVisibleToParticipants && tfCanon !== null && c === tfCanon;
                       return (
                         <div key={c} style={{ flex:1, textAlign:"center", padding:"0.65rem", borderRadius:12, background: isCorrect ? "rgba(34,197,94,0.15)" : "#141e2d", border: `1.5px solid ${isCorrect ? "rgba(34,197,94,0.45)" : "#1a2332"}`, color: isCorrect ? "#22c55e" : surface.text, fontWeight:800, fontSize:"1.05rem" }}>
                           {c}{isCorrect ? " ✓" : ""}
@@ -350,7 +354,8 @@ export default function ParticipantView() {
                       );
                     })}
                   </div>
-                )}
+                  );
+                })()}
 
                 {hintVisibleToParticipants && activeQuestion.hint && (
                   <div style={{ borderRadius:"12px", padding:"0.65rem 0.85rem", marginBottom:"0.75rem", background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.25)" }}>
@@ -362,7 +367,11 @@ export default function ParticipantView() {
                 {answerVisibleToParticipants ? (
                   <div style={{ borderRadius:"12px", padding:"0.85rem 1rem", background:"rgba(22,163,74,0.12)", border:"2px solid rgba(22,163,74,0.4)" }}>
                     <div style={{ fontSize:"0.72rem", fontWeight:700, color:"#22c55e", marginBottom:"0.3rem" }}>✅ الإجابة الصحيحة</div>
-                    <div style={{ fontSize:"clamp(1.7rem, 4vw, 2.6rem)", fontWeight:900, color:surface.text }}>{activeQuestion.answer}</div>
+                    <div style={{ fontSize:"clamp(1.7rem, 4vw, 2.6rem)", fontWeight:900, color:surface.text }}>
+                      {(activeQuestion as any).type === "tf"
+                        ? (normalizeTfCanonical(activeQuestion.answer) ?? activeQuestion.answer)
+                        : activeQuestion.answer}
+                    </div>
                     {activeQuestion.explanation && (
                       <div style={{ fontSize:"0.82rem", color:"#94a3b8", marginTop:"0.4rem" }}>{activeQuestion.explanation}</div>
                     )}

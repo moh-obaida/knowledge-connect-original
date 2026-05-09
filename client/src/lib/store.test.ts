@@ -8,10 +8,14 @@ import {
   defaultRoomState,
   findWinningPath,
   generateBoard,
+  getBoardLetterKey,
   getHexNeighbors,
   isLegacyRoom,
   normalizeBoardForDisplay,
+  normalizeBoardLetter,
+  normalizeLetterForDisplay,
   normalizeRoomState,
+  shuffleBoard,
   upgradeRoomBoardVersion,
 } from "./store";
 
@@ -129,5 +133,35 @@ describe("التحقق من الإجابات العربية", () => {
     });
 
     expect(checkAnswer(question, "أمل").isCorrect).toBe(true);
+  });
+});
+
+describe("هوية الحرف للوحة (ه، و، ي)", () => {
+  it("normalizeBoardLetter لا يخلط بين ة و ه ولا بين ى و ي", () => {
+    expect(normalizeBoardLetter("ة")).toBe("ة");
+    expect(normalizeBoardLetter("ه")).toBe("ه");
+    expect(normalizeBoardLetter("ى")).toBe("ى");
+    expect(normalizeBoardLetter("ي")).toBe("ي");
+  });
+
+  it("normalizeLetterForDisplay يحوّل هـ إلى ه للعرض", () => {
+    expect(normalizeLetterForDisplay("هـ")).toBe("ه");
+  });
+
+  it("لوحة ٥×٥ الموسعة تضم ه ثم و ثم ي في آخر ثلاث خلايا", () => {
+    const board = generateBoard(5, "arabic", { arabicLetterSet: "extended" });
+    expect(getBoardLetterKey(board[22]!)).toBe("ه");
+    expect(getBoardLetterKey(board[23]!)).toBe("و");
+    expect(getBoardLetterKey(board[24]!)).toBe("ي");
+  });
+
+  it("بعد shuffleBoard يبقى letterKey ثابتاً لكل cell id", () => {
+    const board = generateBoard(5, "arabic", { arabicLetterSet: "extended" });
+    const keysById = new Map(board.map((c) => [c.id, getBoardLetterKey(c)]));
+    const shuffled = shuffleBoard(board);
+    const byId = new Map(shuffled.map((c) => [c.id, c]));
+    for (const [id, key] of keysById) {
+      expect(getBoardLetterKey(byId.get(id)!)).toBe(key);
+    }
   });
 });

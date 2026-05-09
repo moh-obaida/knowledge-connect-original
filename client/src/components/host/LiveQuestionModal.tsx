@@ -1,4 +1,6 @@
 import type { RoomState, BoardCell, ActiveQuestion } from "../../lib/store";
+import { getCellDisplayLetter } from "../../lib/store";
+import { normalizeTfCanonical } from "../../lib/questionTypes";
 
 type Props = {
   room: RoomState;
@@ -27,6 +29,7 @@ export default function LiveQuestionModal({
   const hasQuestion = !!activeQuestion;
   const isMcq = activeQuestion?.type === "mcq";
   const isTf = activeQuestion?.type === "tf";
+  const tfCanon = activeQuestion && isTf ? normalizeTfCanonical(activeQuestion.answer) : null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -38,7 +41,7 @@ export default function LiveQuestionModal({
         <div className="modal-header-safe" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
           <div>
             <div style={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 700 }}>الحرف المختار</div>
-            <div style={{ fontSize: "1.5rem", fontWeight: 900, color: "#f59e0b", lineHeight: 1.1 }}>{cell.label}</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 900, color: "#f59e0b", lineHeight: 1.1 }}>{getCellDisplayLetter(cell)}</div>
           </div>
           <button aria-label="إغلاق" onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "1.2rem" }}>✕</button>
         </div>
@@ -88,8 +91,8 @@ export default function LiveQuestionModal({
             )}
             {isTf && (
               <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.65rem" }}>
-                {["صحيح", "خطأ"].map((c) => (
-                  <div key={c} style={{ flex: 1, textAlign: "center", padding: "0.55rem", borderRadius: 10, background: c === activeQuestion!.answer ? "rgba(34,197,94,0.15)" : "#0f1623", border: `1.5px solid ${c === activeQuestion!.answer ? "rgba(34,197,94,0.45)" : "#1a2332"}`, color: c === activeQuestion!.answer ? "#22c55e" : "#cbd5e1", fontWeight: 800 }}>
+                {(["صح", "خطأ"] as const).map((c) => (
+                  <div key={c} style={{ flex: 1, textAlign: "center", padding: "0.55rem", borderRadius: 10, background: tfCanon !== null && c === tfCanon ? "rgba(34,197,94,0.15)" : "#0f1623", border: `1.5px solid ${tfCanon !== null && c === tfCanon ? "rgba(34,197,94,0.45)" : "#1a2332"}`, color: tfCanon !== null && c === tfCanon ? "#22c55e" : "#cbd5e1", fontWeight: 800 }}>
                     {c}
                   </div>
                 ))}
@@ -99,7 +102,11 @@ export default function LiveQuestionModal({
             {room.answerVisibleToHost ? (
               <div style={{ background: "rgba(34,197,94,0.08)", border: "1.5px solid rgba(34,197,94,0.3)", borderRadius: 12, padding: "0.65rem 0.85rem", marginBottom: "0.65rem" }}>
                 <div style={{ fontSize: "0.7rem", color: "#22c55e", fontWeight: 700, marginBottom: "0.2rem" }}>الإجابة</div>
-                <div style={{ color: "#f0ede8", fontWeight: 700 }}>{activeQuestion!.answer}</div>
+                <div style={{ color: "#f0ede8", fontWeight: 700 }}>
+                  {activeQuestion!.type === "tf"
+                    ? (normalizeTfCanonical(activeQuestion!.answer) ?? activeQuestion!.answer)
+                    : activeQuestion!.answer}
+                </div>
                 {activeQuestion!.hint && <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: "0.3rem" }}>تلميح: {activeQuestion!.hint}</div>}
               </div>
             ) : (

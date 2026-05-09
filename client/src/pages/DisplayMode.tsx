@@ -7,6 +7,7 @@ import QRCode from "../components/QRCode";
 import HexBoard from "../components/HexBoard";
 import { t as tr } from "../lib/i18n";
 import { useLanguage } from "../hooks/useLanguage";
+import { normalizeTfCanonical } from "../lib/questionTypes";
 
 function getParam(key: string): string {
   if (typeof window === "undefined") return "";
@@ -106,6 +107,7 @@ export default function DisplayMode() {
                   team2={room.team2}
                   winnerTeam={room.winnerTeam}
                   winningPathIds={winningPath}
+                  questionBankByLetter={room.questionBankByLetter}
                 />
               </div>
 
@@ -139,22 +141,30 @@ export default function DisplayMode() {
                         })}
                       </div>
                     )}
-                    {room.activeQuestion.type === "tf" && (
+                    {room.activeQuestion.type === "tf" && (() => {
+                      const tfCanon = normalizeTfCanonical(room.activeQuestion.answer);
+                      return (
                       <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.7rem" }}>
-                        {[tr("display.true", language), tr("display.false", language)].map((c) => {
-                          const isCorrect = room.answerVisibleToParticipants && c === room.activeQuestion!.answer;
+                        {(["صح", "خطأ"] as const).map((canon) => {
+                          const label = canon === "صح" ? tr("display.true", language) : tr("display.false", language);
+                          const isCorrect = room.answerVisibleToParticipants && tfCanon !== null && canon === tfCanon;
                           return (
-                            <div key={c} style={{ flex: 1, textAlign: "center", padding: "0.55rem", borderRadius: 10, background: isCorrect ? "rgba(34,197,94,0.18)" : "#141e2d", border: `1.5px solid ${isCorrect ? "rgba(34,197,94,0.5)" : "#1a2332"}`, color: isCorrect ? "#22c55e" : "#cbd5e1", fontWeight: 800 }}>
-                              {c}{isCorrect ? " ✓" : ""}
+                            <div key={canon} style={{ flex: 1, textAlign: "center", padding: "0.55rem", borderRadius: 10, background: isCorrect ? "rgba(34,197,94,0.18)" : "#141e2d", border: `1.5px solid ${isCorrect ? "rgba(34,197,94,0.5)" : "#1a2332"}`, color: isCorrect ? "#22c55e" : "#cbd5e1", fontWeight: 800 }}>
+                              {label}{isCorrect ? " ✓" : ""}
                             </div>
                           );
                         })}
                       </div>
-                    )}
+                      );
+                    })()}
                     {room.answerVisibleToParticipants && (
                       <div style={{ marginTop: "0.7rem", padding: "0.6rem 0.85rem", borderRadius: 10, background: "rgba(34,197,94,0.12)", border: "1.5px solid rgba(34,197,94,0.4)" }}>
                         <div style={{ fontSize: "0.74rem", color: "#22c55e", fontWeight: 700, marginBottom: "0.2rem" }}>{tr("display.correctAnswer", language)}</div>
-                        <div style={{ color: "#f0ede8", fontWeight: 700, fontSize: "1.05rem" }}>{room.activeQuestion.answer}</div>
+                        <div style={{ color: "#f0ede8", fontWeight: 700, fontSize: "1.05rem" }}>
+                          {room.activeQuestion.type === "tf"
+                            ? (normalizeTfCanonical(room.activeQuestion.answer) ?? room.activeQuestion.answer)
+                            : room.activeQuestion.answer}
+                        </div>
                       </div>
                     )}
                   </div>
