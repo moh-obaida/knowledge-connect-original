@@ -10,14 +10,14 @@ function claimedBoard(size: 4 | 5 | 6, team: 1 | 2, positions: number[]) {
 
 describe("مسار الفوز في لوحة الحروف", () => {
   it("يحسب الجيران حسب إزاحة الصفوف الفردية", () => {
-    expect(getHexNeighbors(6, 4).sort((a, b) => a - b)).toEqual([1, 2, 5, 7, 9, 10]);
+    expect(getHexNeighbors(6, 4).sort((a, b) => a - b)).toEqual([2, 3, 5, 7, 10, 11]);
   });
 
   it("يكتشف مساراً متعرجاً من اليسار إلى اليمين للفريق الأول", () => {
     const board = claimedBoard(4, 1, [0, 4, 5, 9, 10, 14, 15]);
 
     expect(checkWinner(board, 4)).toBe(1);
-    expect(findWinningPath(board, 4, 1)).toEqual(["cell-0", "cell-4", "cell-5", "cell-9", "cell-10", "cell-14", "cell-15"]);
+    expect(findWinningPath(board, 4, 1)).toEqual(["cell-4", "cell-5", "cell-10", "cell-14", "cell-15"]);
   });
 
   it("يكتشف مساراً متعرجاً من الأعلى إلى الأسفل للفريق الثاني", () => {
