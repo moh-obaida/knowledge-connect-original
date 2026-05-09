@@ -1,9 +1,8 @@
-import { sortedBoard, type BoardCell, type Team } from "../lib/store";
+import { normalizeLetterForDisplay, sortedBoard, type BoardCell, type Team } from "../lib/store";
 
 // Regular flat-top hexagon, full-bleed inside the bounding box so adjacent
 // hexes share edges instead of leaving small triangular gaps.
 const HEX_CLIP = "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)";
-const displayLabel = (label: string) => (label === "أ" ? "ا" : label);
 
 interface HexBoardProps {
   board: BoardCell[];
@@ -95,7 +94,7 @@ export default function HexBoard({
           const isWinning = winningSet.has(cell.id);
           const bank = (cell as any).questionBank;
           const hasQ = !!cell.question.trim() || (Array.isArray(bank) && bank.some((q:any) => String(q?.question||"").trim()));
-          const visibleLabel = displayLabel(cell.label);
+          const visibleLabel = normalizeLetterForDisplay(cell.label);
 
           let bg = "linear-gradient(145deg, #fffdf6, #fff4df)";
           let border = "2px solid rgba(76,29,149,0.58)";

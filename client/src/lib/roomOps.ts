@@ -1,6 +1,12 @@
 import { ref, set, get, update, onValue, off, type DataSnapshot } from "firebase/database";
 import { getFirebaseDb } from "./firebase";
-import { type RoomState, type Player, defaultRoomState } from "./store";
+import {
+  type RoomState,
+  type Player,
+  defaultRoomState,
+  normalizeRoomState,
+  roomStatusFromGameStatus,
+} from "./store";
 
 function randomCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -29,18 +35,22 @@ export async function createRoom(code: string): Promise<RoomState> {
 export async function getRoom(code: string): Promise<RoomState | null> {
   const db = getFirebaseDb();
   const snap = await get(ref(db, `rooms/${code}`));
-  return snap.exists() ? (snap.val() as RoomState) : null;
+  return snap.exists() ? normalizeRoomState(snap.val() as Partial<RoomState>) : null;
 }
 
 export async function updateRoom(code: string, updates: Partial<RoomState>): Promise<void> {
   const db = getFirebaseDb();
-  await update(ref(db, `rooms/${code}`), updates);
+  await update(ref(db, `rooms/${code}`), {
+    ...updates,
+    updatedAt: Date.now(),
+    ...(updates.gameStatus ? { status: roomStatusFromGameStatus(updates.gameStatus) } : {}),
+  });
 }
 
 export function subscribeToRoom(code: string, callback: (state: RoomState | null) => void): () => void {
   const db = getFirebaseDb();
   const roomRef = ref(db, `rooms/${code}`);
-  const handler = (snap: DataSnapshot) => callback(snap.exists() ? (snap.val() as RoomState) : null);
+  const handler = (snap: DataSnapshot) => callback(snap.exists() ? normalizeRoomState(snap.val() as Partial<RoomState>) : null);
   onValue(roomRef, handler);
   return () => off(roomRef, "value", handler);
 }

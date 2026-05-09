@@ -5,6 +5,7 @@ import { isFirebaseConfigured } from "../lib/firebase";
 import { showToast } from "../components/KcToast";
 import { t } from "../lib/i18n";
 import { useLanguage } from "../hooks/useLanguage";
+import KcLogo from "../components/KcLogo";
 
 function getParam(key: string): string {
   if (typeof window === "undefined") return "";
@@ -68,10 +69,8 @@ export default function JoinPage() {
 
       {/* Logo */}
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
-        <div style={{ fontSize:"clamp(2.4rem, 8vw, 3.5rem)", fontWeight:900, color:"#f59e0b", fontFamily:"var(--kc-font-arabic)", lineHeight:1.1 }}>
-          وصلة المعرفة
-        </div>
-        <div style={{ fontSize:"1rem", fontWeight:700, color:"#cbd5e1", marginTop:"0.5rem" }}>
+        <KcLogo light style={{ justifyContent:"center" }} />
+        <div style={{ fontSize:"1rem", fontWeight:700, color:"#cbd5e1", marginTop:"0.85rem" }}>
           {t("join.joinChallenge")}
         </div>
         <div style={{ fontSize:"0.85rem", color:"#94a3b8", marginTop:"0.3rem" }}>

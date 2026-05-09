@@ -8,8 +8,12 @@ import { isFirebaseConfigured } from "../lib/firebase";
 import {
   defaultRoomState, generateBoard, shuffleBoard, sortedBoard, checkWinner,
   findWinningPath,
+  canSafelyUpgradeRoom,
+  createGameEvent,
+  isLegacyRoom,
+  upgradeRoomBoardVersion,
   loadLastRoomCode, saveLastRoomCode,
-  type RoomState, type BoardCell, type ActiveQuestion, type Player,
+  type RoomState, type BoardCell, type ActiveQuestion, type Player, type GameEventType,
 } from "../lib/store";
 import HexBoard from "../components/HexBoard";
 import { showToast } from "../components/KcToast";
@@ -520,6 +524,32 @@ export default function HostView() {
     return !!cell.question.trim();
   };
 
+  const eventPatch = useCallback((
+    type: GameEventType,
+    message: string,
+    details: Partial<NonNullable<RoomState["eventLog"]>[number]> = {},
+  ): Partial<RoomState> => {
+    const current = roomRef.current;
+    const event = createGameEvent(type, message, details);
+    const eventLog = [...(current?.eventLog || []), event].slice(-80);
+    const includeInQuestionHistory = ["cell_selected", "answer_revealed", "hint_revealed", "cell_claimed", "question_skipped", "game_ended"].includes(type);
+    return {
+      eventLog,
+      ...(includeInQuestionHistory ? { questionHistory: [...(current?.questionHistory || []), event].slice(-80) } : {}),
+    };
+  }, []);
+
+  const eventsPatch = useCallback((events: Array<{ type: GameEventType; message: string; details?: Partial<NonNullable<RoomState["eventLog"]>[number]> }>): Partial<RoomState> => {
+    const current = roomRef.current;
+    const created = events.map((event) => createGameEvent(event.type, event.message, event.details || {}));
+    const eventLog = [...(current?.eventLog || []), ...created].slice(-80);
+    const questionEvents = created.filter((event) => ["cell_selected", "answer_revealed", "hint_revealed", "cell_claimed", "question_skipped", "game_ended"].includes(event.type));
+    return {
+      eventLog,
+      ...(questionEvents.length ? { questionHistory: [...(current?.questionHistory || []), ...questionEvents].slice(-80) } : {}),
+    };
+  }, []);
+
   const push = useCallback(async (updates: Partial<RoomState>) => {
     if (!roomCode) return;
     try { await updateRoom(roomCode, updates); }
@@ -556,7 +586,12 @@ export default function HostView() {
       if (cell.claimedBy !== 0) { showToast.info("هذا الحرف محجوز بالفعل."); return; }
       setLiveCellId(cell.id);
       if (!cellHasQuestions(cell)) {
-        push({ activeQuestion: null, selectedCellId: cell.id, questionStatus: "idle" });
+        push({
+          activeQuestion: null,
+          selectedCellId: cell.id,
+          questionStatus: "idle",
+          ...eventPatch("cell_selected", `تم اختيار الحرف ${cell.label}.`, { cellId: cell.id, letter: cell.label }),
+        });
         return;
       }
       const bank = Array.isArray((cell as any).questionBank) && (cell as any).questionBank.length ? (cell as any).questionBank : [{ question: cell.question, answer: cell.answer, category: cell.category, difficulty: cell.difficulty, points: cell.points, hint: cell.hint, explanation: cell.explanation }];
@@ -576,6 +611,7 @@ export default function HostView() {
         answerVisibleToHost: false, answerVisibleToParticipants: false,
         hintVisibleToParticipants: false, questionStatus: "active",
         timerValue: room.timerSetting > 0 ? room.timerSetting : 0, timerMax: room.timerSetting > 0 ? room.timerSetting : 0, timerRunning: room.timerSetting > 0,
+        ...eventPatch("cell_selected", `تم اختيار الحرف ${cell.label}.`, { cellId: cell.id, letter: cell.label }),
       });
     }
   };
@@ -601,11 +637,25 @@ export default function HostView() {
     undoStackRef.current.push({ type: "claim", cellId, team, points: pts, previousActiveTeam: room.activeTeam });
     const winner = checkWinner(nb, room.gridSize);
     const winMsg = winner===1 ? "فاز الفريق الأزرق!" : winner===2 ? "فاز الفريق الأحمر!" : "";
+    const claimedLetter = current.label;
+    const eventUpdates = eventsPatch([
+      {
+        type: "cell_claimed",
+        message: `حصل ${team === 1 ? room.team1.name : room.team2.name} على الحرف ${claimedLetter}.`,
+        details: { teamId: team, cellId, letter: claimedLetter, questionId: room.activeQuestion?.cellId },
+      },
+      ...(winMsg ? [{
+        type: "game_ended" as const,
+        message: winMsg,
+        details: { teamId: winner as 1 | 2 },
+      }] : []),
+    ]);
     await push({ board:nb, ...scoreUp, questionStatus:"correct", selectedCellId:"", activeQuestion:null,
       answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
       timerRunning:false, timerValue:0, timerMax:0,
       winnerMessage: winMsg, winnerTeam: winner,
-      gameStatus: winMsg ? "finished" : room.gameStatus });
+      gameStatus: winMsg ? "finished" : room.gameStatus,
+      ...eventUpdates });
     if (winMsg) {
       showToast.success(winMsg);
       try {
@@ -663,7 +713,20 @@ export default function HostView() {
       const pathWinner = checkWinner(room.board, room.gridSize);
       const winner: 0 | 1 | 2 = gameMode === "connection" ? pathWinner : (t1 > t2 ? 1 : t2 > t1 ? 2 : 0);
       const msg = winner === 1 ? `🏆 ${room.team1.name} فاز!` : winner === 2 ? `🏆 ${room.team2.name} فاز!` : "🤝 تعادل!";
-      await push({ winnerMessage: msg, winnerTeam: winner, gameStatus: "finished", timerRunning:false, timerValue:0, timerMax:0, activeQuestion:null, selectedCellId:"", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
+      await push({
+        winnerMessage: msg,
+        winnerTeam: winner,
+        gameStatus: "finished",
+        timerRunning:false,
+        timerValue:0,
+        timerMax:0,
+        activeQuestion:null,
+        selectedCellId:"",
+        answerVisibleToHost:false,
+        answerVisibleToParticipants:false,
+        hintVisibleToParticipants:false,
+        ...eventPatch("game_ended", msg, winner ? { teamId: winner } : {}),
+      });
       try {
         const finishedRoom: RoomState = { ...room, winnerTeam: winner, winnerMessage: msg, gameStatus: "finished" } as RoomState;
         const dedupeKey = `${finishedRoom.roomCode}-${winner}-${finishedRoom.team1Score}-${finishedRoom.team2Score}`;
@@ -723,12 +786,21 @@ export default function HostView() {
           activeQuestion: { ...room.activeQuestion, question: next.question, answer: next.answer, category: next.category, difficulty: next.difficulty, points: next.points || 1, hint: next.hint || "", explanation: next.explanation || "", type: nType, ...(nChoices ? { choices: nChoices } : { choices: [] }) },
           answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false,
           questionStatus:"skipped", timerRunning:false, timerValue: room.timerSetting,
+          ...eventPatch("question_skipped", `تم تخطي سؤال الحرف ${room.activeQuestion.cellLabel}.`, { cellId: room.activeQuestion.cellId, letter: room.activeQuestion.cellLabel }),
         });
         setAnswerActionBusy(false);
         return;
       }
     }
-    await push({ activeQuestion:null, selectedCellId:"", questionStatus:"skipped", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
+    await push({
+      activeQuestion:null,
+      selectedCellId:"",
+      questionStatus:"skipped",
+      answerVisibleToHost:false,
+      answerVisibleToParticipants:false,
+      hintVisibleToParticipants:false,
+      ...(room.activeQuestion ? eventPatch("question_skipped", `تم تخطي سؤال الحرف ${room.activeQuestion.cellLabel}.`, { cellId: room.activeQuestion.cellId, letter: room.activeQuestion.cellLabel }) : {}),
+    });
     setHostAnswer("");
     setHostAnswerFeedback("تم تخطي السؤال");
     setAnswerActionBusy(false);
@@ -776,7 +848,20 @@ export default function HostView() {
     if (!room) return;
     const msg = t==="draw" ? "🤝 تعادل!" : t===1 ? `🏆 ${room.team1.name} فاز!` : `🏆 ${room.team2.name} فاز!`;
     const winnerTeam: 0|1|2 = t==="draw" ? 0 : t;
-    push({ winnerMessage:msg, winnerTeam, gameStatus:"finished", timerRunning:false, timerValue:0, timerMax:0, activeQuestion:null, selectedCellId:"", answerVisibleToHost:false, answerVisibleToParticipants:false, hintVisibleToParticipants:false });
+    push({
+      winnerMessage:msg,
+      winnerTeam,
+      gameStatus:"finished",
+      timerRunning:false,
+      timerValue:0,
+      timerMax:0,
+      activeQuestion:null,
+      selectedCellId:"",
+      answerVisibleToHost:false,
+      answerVisibleToParticipants:false,
+      hintVisibleToParticipants:false,
+      ...eventPatch("game_ended", msg, winnerTeam ? { teamId: winnerTeam } : {}),
+    });
     try {
       const finishedRoom: RoomState = { ...room, winnerTeam, winnerMessage: msg, gameStatus: "finished" } as RoomState;
       const dedupeKey = `${finishedRoom.roomCode}-${winnerTeam}-${finishedRoom.team1Score}-${finishedRoom.team2Score}`;
@@ -795,9 +880,9 @@ export default function HostView() {
     const empty = room.board.filter(c=>!cellHasQuestions(c)).length;
     if (empty>0) {
       confirm(`بعض الحروف لا تحتوي على أسئلة (${empty} حرف). هل تريد المتابعة؟`,
-        async () => { await push({ gameStatus:"active" }); setActiveTab("game"); });
+        async () => { await push({ gameStatus:"active", ...eventPatch("game_started", "بدأت اللعبة.") }); setActiveTab("game"); });
     } else {
-      await push({ gameStatus:"active" });
+      await push({ gameStatus:"active", ...eventPatch("game_started", "بدأت اللعبة.") });
       showToast.success("بدأت اللعبة! 🎮");
       setActiveTab("game");
     }
@@ -1443,6 +1528,16 @@ export default function HostView() {
   const totalCells = room.board.length;
   const winningPathIds = room.winnerTeam ? findWinningPath(room.board, room.gridSize, room.winnerTeam as 1|2) : [];
   const gameMode = room.gameMode || "classic";
+  const legacyRoom = isLegacyRoom(room);
+  const safeLegacyUpgrade = canSafelyUpgradeRoom(room);
+  const updateLegacyRoom = async () => {
+    if (!safeLegacyUpgrade) {
+      showToast.info("يمكن متابعة اللعبة الحالية كما هي دون تحديث.");
+      return;
+    }
+    await push(upgradeRoomBoardVersion(room));
+    showToast.success("تم تحديث اللوحة للإصدار الحالي.");
+  };
 
   const applyPowerUp = async (kind: "double_points"|"extra_time"|"switch_question") => {
     if (!room) return;
@@ -1489,11 +1584,16 @@ export default function HostView() {
             cell={liveCell}
             activeQuestion={room.activeQuestion}
             onClose={() => setLiveCellId("")}
-            onShowAnswer={() => push({ answerVisibleToHost: true })}
+            onShowAnswer={() => push({ answerVisibleToHost: true, ...eventPatch("answer_revealed", "تم كشف الإجابة للمضيف.") })}
             onAwardTeam={(team) => { markCorrectForTeam(team); setLiveCellId(""); }}
             onSkip={() => { skipQ(); setLiveCellId(""); }}
             onReturnToBank={() => { cancelQuestion(); setLiveCellId(""); }}
-            onRevealToParticipants={() => push({ answerVisibleToParticipants: !room.answerVisibleToParticipants, answerVisibleToHost: true, questionStatus: room.answerVisibleToParticipants ? room.questionStatus : "answer_revealed" })}
+            onRevealToParticipants={() => push({
+              answerVisibleToParticipants: !room.answerVisibleToParticipants,
+              answerVisibleToHost: true,
+              questionStatus: room.answerVisibleToParticipants ? room.questionStatus : "answer_revealed",
+              ...(!room.answerVisibleToParticipants ? eventPatch("answer_revealed", "تم كشف الإجابة للطلاب.") : {}),
+            })}
             onAddQuestion={() => { setLiveCellId(""); setEditingCell(liveCell); }}
           />
         );
@@ -1560,6 +1660,24 @@ export default function HostView() {
 
       {/* Content */}
       <div className="container" style={{ paddingTop:"1.25rem", paddingBottom:"3rem" }}>
+        {legacyRoom && (
+          <div className="kc-card" style={{ marginBottom:"1rem", background:"linear-gradient(135deg, rgba(245,158,11,0.16), rgba(76,29,149,0.16))", borderColor:"rgba(245,158,11,0.42)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", gap:"0.75rem", alignItems:"center", flexWrap:"wrap" }}>
+              <div>
+                <div style={{ color:"#fbbf24", fontWeight:900 }}>هذه اللعبة تستخدم بيانات قديمة</div>
+                <div style={{ color:"#cbd5e1", fontSize:"0.86rem", lineHeight:1.8 }}>
+                  يمكنك متابعتها كما هي أو تحديث اللوحة للإصدار الجديد. تظهر الخانات القديمة التي تبدأ بـ أ بصيغة ا دون تعديل صامت للغرفة.
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap" }}>
+                <button className="btn-secondary" onClick={() => showToast.info("تمت متابعة اللعبة الحالية كما هي.")}>متابعة</button>
+                <button className="btn-gold" onClick={updateLegacyRoom} disabled={!safeLegacyUpgrade}>
+                  تحديث اللوحة
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ══ Host Lobby (visible while game has not started) ══ */}
         {room.gameStatus === "lobby" && (
@@ -1998,16 +2116,16 @@ export default function HostView() {
                         </div>
                       ) : (
                         <button className="btn-secondary" style={{ width:"100%", fontSize:"0.85rem" }}
-                          onClick={()=>push({ answerVisibleToHost:true })}>👁 إظهار الإجابة للمضيف فقط</button>
+                          onClick={()=>push({ answerVisibleToHost:true, ...eventPatch("answer_revealed", "تم كشف الإجابة للمضيف.") })}>👁 إظهار الإجابة للمضيف فقط</button>
                       )}
                     </div>
                     {/* Participant controls */}
                     <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
                       {!room.answerVisibleToParticipants
-                        ? <button className="btn-gold" style={{ fontSize:"0.8rem" }} onClick={()=>push({ answerVisibleToParticipants:true, answerVisibleToHost:true, questionStatus:"answer_revealed" })}>📢 إظهار الإجابة للمشاركين</button>
+                        ? <button className="btn-gold" style={{ fontSize:"0.8rem" }} onClick={()=>push({ answerVisibleToParticipants:true, answerVisibleToHost:true, questionStatus:"answer_revealed", ...eventPatch("answer_revealed", "تم كشف الإجابة للطلاب.") })}>📢 إظهار الإجابة للمشاركين</button>
                         : <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>push({ answerVisibleToParticipants:false })}>🔒 إخفاء الإجابة</button>}
                       {!room.hintVisibleToParticipants
-                        ? <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>push({ hintVisibleToParticipants:true })}>💡 إظهار التلميح</button>
+                        ? <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>push({ hintVisibleToParticipants:true, ...eventPatch("hint_revealed", "تم عرض التلميح للطلاب.") })}>💡 إظهار التلميح</button>
                         : <button className="btn-secondary" style={{ fontSize:"0.8rem" }} onClick={()=>push({ hintVisibleToParticipants:false })}>💡 إخفاء التلميح</button>}
                     </div>
                     {/* Correct / Wrong / Steal / Skip / Next */}
@@ -2033,6 +2151,21 @@ export default function HostView() {
                   <div style={{ textAlign:"center", padding:"2rem", color:"#3d5068" }}>
                     <div style={{ fontSize:"2rem", marginBottom:"0.5rem" }}>👆</div>
                     <div>اضغط على حرف في اللوحة لتحميل سؤاله</div>
+                  </div>
+                )}
+              </div>
+              <div className="kc-card">
+                <div className="section-title">سجل الجولة</div>
+                {(room.questionHistory || room.eventLog || []).length === 0 ? (
+                  <div style={{ color:"#64748b", fontSize:"0.84rem", textAlign:"center", padding:"1rem" }}>لم تبدأ أحداث الجولة بعد.</div>
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:"0.45rem", maxHeight:260, overflowY:"auto" }}>
+                    {(room.questionHistory || room.eventLog || []).slice(-10).reverse().map((event) => (
+                      <div key={event.id} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:10, padding:"0.55rem 0.65rem" }}>
+                        <div style={{ color:"#f0ede8", fontWeight:800, fontSize:"0.84rem" }}>{event.message}</div>
+                        <div style={{ color:"#64748b", fontSize:"0.72rem", marginTop:"0.15rem" }}>{new Date(event.timestamp).toLocaleTimeString("ar")}</div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

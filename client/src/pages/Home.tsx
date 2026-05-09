@@ -3,6 +3,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { showToast } from "../components/KcToast";
 import { useAppSettings } from "../hooks/useAppSettings";
 import HexBoard from "../components/HexBoard";
+import KcLogo from "../components/KcLogo";
 import { generateBoard } from "../lib/store";
 
 export default function Home() {
@@ -65,13 +66,7 @@ export default function Home() {
 
       <div style={{ width: "100%", maxWidth: 1220, margin: "0 auto", padding: "1.25rem 1rem 2.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.8rem", flexWrap: "wrap", color: "#fff" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
-            <div style={{ width: 52, height: 52, borderRadius: 18, background: "linear-gradient(135deg,#f59e0b,#fff7ed)", display: "grid", placeItems: "center", color: "#2e1065", fontWeight: 900, boxShadow: "0 12px 30px rgba(245,158,11,0.26)" }}>و</div>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: "1.25rem" }}>وصلة المعرفة</div>
-              <div style={{ color: "#ddd6fe", fontSize: "0.86rem" }}>لعبة صفية عربية للحروف والأسئلة</div>
-            </div>
-          </div>
+          <KcLogo light subtitle="لعبة صفية عربية للحروف والأسئلة" />
           <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
             <button className="btn-secondary" style={{ background: "rgba(255,255,255,0.14)", color: "#fff", borderColor: "rgba(255,255,255,0.28)" }} onClick={() => setLocation("/join")}>عرض شاشة الطلاب</button>
             <button className="btn-gold" onClick={goHost}>دخول شاشة المعلم</button>
