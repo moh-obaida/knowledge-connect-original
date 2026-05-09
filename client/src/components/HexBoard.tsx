@@ -3,6 +3,7 @@ import { sortedBoard, type BoardCell, type Team } from "../lib/store";
 // Regular flat-top hexagon, full-bleed inside the bounding box so adjacent
 // hexes share edges instead of leaving small triangular gaps.
 const HEX_CLIP = "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)";
+const displayLabel = (label: string) => (label === "أ" ? "ا" : label);
 
 interface HexBoardProps {
   board: BoardCell[];
@@ -94,6 +95,7 @@ export default function HexBoard({
           const isWinning = winningSet.has(cell.id);
           const bank = (cell as any).questionBank;
           const hasQ = !!cell.question.trim() || (Array.isArray(bank) && bank.some((q:any) => String(q?.question||"").trim()));
+          const visibleLabel = displayLabel(cell.label);
 
           let bg = "linear-gradient(145deg, #fffdf6, #fff4df)";
           let border = "2px solid rgba(76,29,149,0.58)";
@@ -143,7 +145,7 @@ export default function HexBoard({
             <button
               type="button"
               key={cell.id}
-              aria-label={`حرف ${cell.label}${cell.claimedBy === 1 ? ` محجوز لصالح ${team1.name}` : cell.claimedBy === 2 ? ` محجوز لصالح ${team2.name}` : ""}`}
+              aria-label={`حرف ${visibleLabel}${cell.claimedBy === 1 ? ` محجوز لصالح ${team1.name}` : cell.claimedBy === 2 ? ` محجوز لصالح ${team2.name}` : ""}`}
               disabled={!clickable}
               title={
                 mode === "setup"
@@ -180,10 +182,10 @@ export default function HexBoard({
                 fontSize: cellSize * 0.42,
                 color: textColor,
                 fontFamily: "var(--kc-font-arabic)",
-                lineHeight: 1,
+                lineHeight: 1.35,
                 textShadow: claimed1 || claimed2 ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
               }}>
-                {cell.label}
+                {visibleLabel}
               </span>
 
               {/* Setup status dot */}

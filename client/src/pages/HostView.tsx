@@ -1176,7 +1176,8 @@ export default function HostView() {
                 <div style={{ color:"#64748b", fontSize:"0.94rem", lineHeight:1.8 }}>مرحباً بك في وصلة المعرفة. ابدأ لعبة جديدة، جهز الأسئلة، أو افتح شاشة الطلاب من مكان واحد. {hostProfile.hostName && `• ${hostProfile.hostName}`}</div>
               </div>
               <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap" }}>
-                <button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>{room ? "فتح شاشة المعلم" : (creating ? "جارٍ الإنشاء..." : "ابدأ لعبة جديدة")}</button>
+                <button className="btn-gold" onClick={handleCreate} disabled={creating}>{creating ? "جارٍ الإنشاء..." : "ابدأ لعبة جديدة"}</button>
+                {room && <button className="btn-secondary" style={{ background:"#eef2ff", color:"#1e3a8a", borderColor:"#c7d2fe" }} onClick={()=>setHostViewMode("room")}>متابعة الغرفة الحالية</button>}
                 <button className="btn-secondary" style={{ background:"#eef2ff", color:"#1e3a8a", borderColor:"#c7d2fe" }} onClick={()=>{ localStorage.removeItem("kc_host_profile"); setLocation("/"); }}>الخروج</button>
               </div>
             </div>
@@ -1194,7 +1195,7 @@ export default function HostView() {
                 <div style={{ fontSize:"clamp(1.6rem,4vw,2.55rem)", fontWeight:900, lineHeight:1.15, maxWidth:720 }}>منصة تفاعلية لتعليم الحروف العربية من خلال اللعب والتعاون داخل الصف</div>
                 <div style={{ color:"#dbeafe", marginTop:"0.7rem", lineHeight:1.9, maxWidth:650 }}>ابدأ لعبة جديدة، حمّل قالباً جاهزاً، أو تابع نتائج الحصة من مركز واحد مصمم للمعلم.</div>
                 <div style={{ display:"flex", gap:"0.55rem", flexWrap:"wrap", marginTop:"1rem" }}>
-                  <button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>{room ? "فتح غرفة الاستضافة" : (creating ? "جارٍ الإنشاء..." : "إنشاء لعبة جديدة")}</button>
+                  <button className="btn-gold" onClick={handleCreate} disabled={creating}>{creating ? "جارٍ الإنشاء..." : "إنشاء لعبة جديدة"}</button>
                   <button className="btn-secondary" style={{ background:"rgba(255,255,255,0.16)", color:"#fff", borderColor:"rgba(255,255,255,0.28)" }} onClick={()=>setDashboardTab("templates")}>إدارة الأسئلة والقوالب</button>
                 </div>
               </div>
@@ -1214,7 +1215,7 @@ export default function HostView() {
               <div className="section-title" style={{ color:"#1e3a8a", borderRightColor:"#f59e0b" }}>إجراءات سريعة</div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))", gap:"0.75rem" }}>
                 {[
-                  { icon:"🎮", title:"ابدأ لعبة جديدة", body:"جهّز الفرق، اختر الحروف، وابدأ التحدي خلال دقائق.", button:"بدء الإعداد", action:()=>room ? setHostViewMode("room") : handleCreate(), primary:true },
+                  { icon:"🎮", title:"ابدأ لعبة جديدة", body:"جهّز الفرق، اختر الحروف، وابدأ التحدي خلال دقائق.", button:"بدء الإعداد", action:handleCreate, primary:true },
                   { icon:"📝", title:"إدارة بنك الأسئلة", body:"أضف الأسئلة ورتبها حسب الحروف والإجابات الصحيحة.", button:"إدارة الأسئلة", action:()=>room ? (setHostViewMode("room"), setActiveTab("setup")) : handleCreate() },
                   { icon:"🧩", title:"القوالب الجاهزة", body:"استخدم قوالب سريعة أو احفظ قالبك الخاص للحصص القادمة.", button:"فتح القوالب", action:()=>setDashboardTab("templates") },
                   { icon:"📚", title:"الألعاب المحفوظة", body:"تابع لعبة سابقة أو احذف الألعاب القديمة.", button:"عرض الألعاب", action:()=>setDashboardTab("games") },
@@ -1293,7 +1294,7 @@ export default function HostView() {
                   <div style={{ color:"#334155", fontWeight:800 }}>لا توجد ألعاب محفوظة حالياً</div>
                   <div style={{ fontSize:"0.82rem", color:"#64748b", marginTop:"0.25rem" }}>ابدأ لعبة جديدة أو قم بتحميل قالب أسئلة للبدء.</div>
                   <div style={{ display:"flex", gap:"0.4rem", justifyContent:"center", flexWrap:"wrap", marginTop:"0.6rem" }}>
-                    <button className="btn-gold" style={{ fontSize:"0.78rem" }} onClick={()=>room ? setHostViewMode("room") : handleCreate()}>إنشاء لعبة جديدة</button>
+                    <button className="btn-gold" style={{ fontSize:"0.78rem" }} onClick={handleCreate}>إنشاء لعبة جديدة</button>
                     <button className="btn-secondary" style={{ fontSize:"0.78rem", background:"#ffffff", color:"#334155", borderColor:"#e2e8f0" }} onClick={()=>setDashboardTab("templates")}>عرض القوالب</button>
                   </div>
                 </div>
@@ -1328,7 +1329,7 @@ export default function HostView() {
               {dashboardFilteredTemplates.map(tpl=>{ const count = tpl.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || tpl.questions.length; return <div key={tpl.id} style={{ background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.65rem" }}><div style={{ fontWeight:700, color:"#f0ede8" }}>{tpl.name}</div><div style={{ fontSize:"0.74rem", color:"#94a3b8" }}>{tpl.description || "قالب تعليمي سريع"}</div><div style={{ fontSize:"0.74rem", color:"#94a3b8" }}>التصنيف: {tpl.categories.join("، ")} • المستوى: {tpl.level} • الأسئلة: {count}</div><div style={{ display:"flex", gap:"0.35rem", marginTop:"0.45rem", flexWrap:"wrap" }}><button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button><button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={async()=>{ const targetRoom = room || await handleCreate(); if (targetRoom) { setHostViewMode("room"); await useTemplate(tpl, targetRoom); } }}>استخدام القالب</button></div></div>; })}
             </div>
           </div>}
-          {dashboardTab==="games" && <div className="kc-card"><div className="section-title">ألعابي</div><div style={{ color:"#94a3b8", marginBottom:"0.45rem", fontSize:"0.84rem" }}>إدارة ألعابك المحفوظة محلياً.</div><input className="kc-input" placeholder="ابحث عن لعبة..." value={gamesSearch} onChange={e=>setGamesSearch(e.target.value)} /><div style={{ marginTop:"0.7rem", background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.8rem" }}><div style={{ color:"#94a3b8" }}>لا توجد ألعاب محفوظة بعد. أنشئ لعبة جديدة أو استخدم أحد القوالب الجاهزة.</div><div style={{ display:"flex", gap:"0.4rem", marginTop:"0.55rem", flexWrap:"wrap" }}><button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setDashboardTab("templates")}>عرض القوالب</button><button className="btn-secondary" onClick={importBoard}>استيراد لعبة</button></div></div></div>}
+          {dashboardTab==="games" && <div className="kc-card"><div className="section-title">ألعابي</div><div style={{ color:"#94a3b8", marginBottom:"0.45rem", fontSize:"0.84rem" }}>إدارة ألعابك المحفوظة محلياً.</div><input className="kc-input" placeholder="ابحث عن لعبة..." value={gamesSearch} onChange={e=>setGamesSearch(e.target.value)} /><div style={{ marginTop:"0.7rem", background:"#141e2d", border:"1px solid #1a2332", borderRadius:"10px", padding:"0.8rem" }}><div style={{ color:"#94a3b8" }}>لا توجد ألعاب محفوظة بعد. أنشئ لعبة جديدة أو استخدم أحد القوالب الجاهزة.</div><div style={{ display:"flex", gap:"0.4rem", marginTop:"0.55rem", flexWrap:"wrap" }}><button className="btn-gold" onClick={handleCreate}>إنشاء لعبة جديدة</button><button className="btn-secondary" onClick={()=>setDashboardTab("templates")}>عرض القوالب</button><button className="btn-secondary" onClick={importBoard}>استيراد لعبة</button></div></div></div>}
           {dashboardTab==="results" && <div className="kc-card"><div className="section-title">النتائج</div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"0.5rem", marginBottom:"0.6rem" }}>
               <div style={{ color:"#94a3b8", fontSize:"0.84rem" }}>سجل النتائج المحلية للتحديات. <span style={{ color:"#64748b" }}>(تُحفظ على هذا الجهاز فقط)</span></div>
@@ -1343,7 +1344,7 @@ export default function HostView() {
                 <div style={{ color:"#cbd5e1", fontWeight:700, marginBottom:"0.2rem" }}>لا توجد نتائج محفوظة بعد.</div>
                 <div style={{ fontSize:"0.82rem", color:"#64748b", marginBottom:"0.7rem" }}>ابدأ لعبة جديدة لحفظ أول نتيجة.</div>
                 <div style={{ display:"flex", gap:"0.4rem", justifyContent:"center", flexWrap:"wrap" }}>
-                  <button className="btn-gold" onClick={()=>room ? setHostViewMode("room") : handleCreate()}>إنشاء لعبة جديدة</button>
+                  <button className="btn-gold" onClick={handleCreate}>إنشاء لعبة جديدة</button>
                   <button className="btn-secondary" onClick={()=>setDashboardTab("templates")}>عرض القوالب</button>
                 </div>
               </div>
