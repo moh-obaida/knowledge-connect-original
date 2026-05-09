@@ -26,6 +26,13 @@ import JoinQRCard from "../components/host/JoinQRCard";
 import ResultPreviewModal from "../components/host/ResultPreviewModal";
 import LiveQuestionModal from "../components/host/LiveQuestionModal";
 import { saveGameResult, loadGameResults, deleteGameResult, exportResultsJSON, exportResultsCSV, summarizeResult, aggregateResults, type GameResult } from "../lib/gameResults";
+import {
+  exportBoardToXlsx,
+  exportTemplateToXlsx,
+  mergeBoardFromWorkbook,
+  parseTemplateWorkbookToStarter,
+  readExcelWorkbookFromFile,
+} from "../lib/excelQuestions";
 
 // ── URL helpers ───────────────────────────────────────────────
 const BASE_URL = (import.meta.env.VITE_PUBLIC_APP_URL as string) || window.location.origin;
@@ -321,6 +328,68 @@ const LETTER_WORDS: Record<string, string[]> = {
   "غ":["غيمة","غذاء","غاية"],"ف":["فكرة","فرح","فصل"],"ق":["قصة","قلم","قيمة"],"ك":["كتاب","كرة","كوكب"],"ل":["لغة","لطف","لوحة"],"م":["مدرسة","مكتبة","مستقبل"],
   "ن":["نخلة","نجاح","نشاط"],"هـ":["هلال","هاتف","هدوء"],"و":["وردة","وعد","وطن"],"ي":["يقين","يوم","يد"],
 };
+/** مفردات تربوية مناسبة للتصنيف الإسلامي (إجابة تبدأ بحرف الخانة بعد التطبيع). */
+const ISLAM_LETTER_WORDS: Record<string, string[]> = {
+  "ا":["إسلام","إيمان","إحسان","أمانة"],
+  "ب":["بر","بركة","بشارة","بيت الله"],
+  "ت":["تقوى","توبة","تعاون"],
+  "ث":["ثواب","ثقة","ثبات"],
+  "ج":["جنة","جود","جمع"],
+  "ح":["حج","حكمة","حلم"],
+  "خ":["خشية","خير","خلق"],
+  "د":["دعاء","دين","درس"],
+  "ذ":["ذكر","ذكاء"],
+  "ر":["رحمة","رسالة","ركعة"],
+  "ز":["زكاة","زهد","زيارة"],
+  "س":["سنة","سلام","سجود"],
+  "ش":["شكر","شهادة","شفاعة"],
+  "ص":["صلاة","صبر","صيام"],
+  "ض":["ضيف","ضوء"],
+  "ط":["طهارة","طاعة","طعام"],
+  "ظ":["ظلم","ظفر"],
+  "ع":["علم","عبادة","عفو"],
+  "غ":["غفران","غيبة","غاية"],
+  "ف":["فضيلة","فرض","فقراء"],
+  "ق":["قرآن","قيام","قدر"],
+  "ك":["كعبة","كرم","كفارة"],
+  "ل":["ليل","لطف","لقمان"],
+  "م":["مسجد","مسلم","مروءة"],
+  "ن":["نور","نية","نصيحة"],
+  "هـ":["هدى","هجرة","هلال"],
+  "و":["وضوء","وفاء","وطن"],
+  "ي":["يقين","يوم","يتيم"],
+};
+/** مفردات مرتبطة بالسيرة النبوية والرسول الكريم صلى الله عليه وسلم (صياغة تربوية). */
+const SEERAH_LETTER_WORDS: Record<string, string[]> = {
+  "ا":["إسلام","أحد","أسرة"],
+  "ب":["بدر","بشارة","بيت"],
+  "ت":["تبوك","تعاون"],
+  "ث":["ثقة","ثبات"],
+  "ج":["جبل","جود"],
+  "ح":["حنين","حكمة"],
+  "خ":["خديجة","خير"],
+  "د":["دعوة","دين"],
+  "ذ":["ذكر"],
+  "ر":["رسول","رحمة","رحلة"],
+  "ز":["زكاة"],
+  "س":["سيدنا","سراء"],
+  "ش":["شفاء"],
+  "ص":["صحابة","صبر","صلح"],
+  "ض":["ضياء"],
+  "ط":["طفولة","طهارة"],
+  "ظ":["ظهر"],
+  "ع":["عمر","عرفات","عطاء"],
+  "غ":["غار","غفران"],
+  "ف":["فتح","فاطمة"],
+  "ق":["قريش","قرآن"],
+  "ك":["كرم","كعبة"],
+  "ل":["لبيك"],
+  "م":["محمد","مكة","مدينة"],
+  "ن":["نبوة","نصر","نور"],
+  "هـ":["هجرة","هدى"],
+  "و":["وفد","وصية"],
+  "ي":["يسرى","يقين"],
+};
 const ARABIC_LETTER_NORMALIZE: Record<string, string> = { "أ":"ا", "إ":"ا", "آ":"ا", "ٱ":"ا", "ى":"ي" };
 const normalizeArabicLetter = (value?: string) => {
   const ch = (value || "").trim().replace(/[ً-ٰٟۖ-ۭ]/g, "").charAt(0);
@@ -347,11 +416,18 @@ const questionInitialLetter = (item: Partial<TemplateQuestionItem>) => {
   if (item.answer) return normalizeArabicLetter(item.answer);
   return "";
 };
-const createFullLetterTemplate = (id: string, name: string, category: string, level: "سهل" | "متوسط" | "صعب", density: 2 | 3 = 2): StarterTemplate => {
+const createFullLetterTemplate = (
+  id: string,
+  name: string,
+  category: string,
+  level: "سهل" | "متوسط" | "صعب",
+  density: 2 | 3 = 2,
+  wordMap: Record<string, string[]> = LETTER_WORDS,
+): StarterTemplate => {
   const boardBanks = ARABIC_LETTERS_FULL.map((letter) => ({
     cellId: "",
     label: letter,
-    questionBank: (LETTER_WORDS[letter] || [`كلمة ${letter}`]).slice(0, density).map((ans, idx) => ({
+    questionBank: (wordMap[letter] || LETTER_WORDS[letter] || [`كلمة ${letter}`]).slice(0, density).map((ans, idx) => ({
       letter,
       question: idx === 0
         ? `اذكر كلمة ${category === "تقنية" ? "تقنية " : ""}تبدأ بحرف ${letter}.`
@@ -368,7 +444,9 @@ const createFullLetterTemplate = (id: string, name: string, category: string, le
 };
 const STARTER_TEMPLATES: StarterTemplate[] = [
   { ...createFullLetterTemplate("tpl_letters_basic", "قالب الحروف الأساسية", "حروف", "سهل", 2), description:"قالب تأسيسي لتدريب الطلاب على الحروف الأساسية." },
-  { id:"tpl_islamic", name:"قالب أسئلة إسلامية", categories:["التربية الإسلامية"], level:"سهل", description:"أسئلة قصيرة ومباشرة في القيم والمفاهيم الإسلامية.", questions:["ما أول أركان الإسلام؟","كم عدد الصلوات المفروضة في اليوم؟","ما الشهر الذي يصوم فيه المسلمون؟","ما القبلة التي يتجه إليها المسلم في الصلاة؟","من هو خاتم الأنبياء؟"] },
+  { ...createFullLetterTemplate("tpl_islamic", "قالب الحروف — التربية الإسلامية", "التربية الإسلامية", "سهل", 2, ISLAM_LETTER_WORDS), description:"أسئلة حرفية بمفردات إسلامية مناسبة للصفوف." },
+  { ...createFullLetterTemplate("tpl_seerah", "قالب السيرة النبوية", "السيرة النبوية", "متوسط", 2, SEERAH_LETTER_WORDS), description:"مفردات ومواضيع مرتبطة بحياة الرسول صلى الله عليه وسلم بصياغة تربوية." },
+  { ...createFullLetterTemplate("tpl_islamic_deep", "قالب الحروف — عمق إسلامي", "التربية الإسلامية", "صعب", 3, ISLAM_LETTER_WORDS), description:"ثلاثة أسئلة لكل حرف بمفردات أوسع للمراجعة المتقدمة." },
   { id:"tpl_arabic", name:"قالب اللغة العربية", categories:["اللغة العربية"], level:"متوسط", description:"مفردات وحروف وفهم لغوي للمرحلة الأساسية.", questions:["اختر كلمة تبدأ بحرف الألف.","ما الحرف الأول في كلمة: باب؟","أي كلمة تحتوي على حرف السين؟","اختر كلمة تنتهي بحرف النون.","ما مرادف كلمة منزل؟"] },
   { id:"tpl_science", name:"قالب العلوم", categories:["العلوم"], level:"متوسط", description:"مراجعة سريعة لمفاهيم علمية عامة.", questions:["ما الكوكب الذي نعيش عليه؟","ما العضو الذي نستخدمه للرؤية؟","ما لون السماء في النهار؟","ما الحيوان الذي يعطينا الحليب؟","ما وسيلة النقل التي تطير في السماء؟"] },
   { id:"tpl_quick_review", name:"قالب مراجعة سريعة", categories:["مراجعة عامة"], level:"متوسط", description:"قالب متوازن للمراجعة قبل الاختبار.", questions:["ما أول أركان الإسلام؟","ما ناتج ٣ + ٤؟","ما الحرف الأول في كلمة: وردة؟","كم يومًا في الأسبوع؟","أكمل النمط: ٢، ٤، ٦، __"] },
@@ -940,24 +1018,26 @@ export default function HostView() {
 
   const exportBoard = () => {
     if (!room) return;
-    const blob = new Blob([JSON.stringify(room.board, null, 2)], { type:"application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href=url; a.download=`wasla-board-${roomCode}.json`;
-    a.click(); URL.revokeObjectURL(url);
-    showToast.success("تم تصدير أسئلة اللوحة");
+    exportBoardToXlsx(room.board, `wasla-board-${roomCode}`);
+    showToast.success("تم تصدير أسئلة اللوحة بصيغة Excel");
   };
 
   const importBoard = () => {
-    const input = document.createElement("input"); input.type="file"; input.accept=".json";
+    if (!room) {
+      showToast.warning("أنشئ لعبة أو افتح غرفة أولاً ثم استورد ملف Excel.");
+      return;
+    }
+    const input = document.createElement("input"); input.type="file"; input.accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     input.onchange = async e => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
+      if (!file || !room) return;
       try {
-        const parsed = JSON.parse(await file.text()) as BoardCell[];
-        if (!Array.isArray(parsed)) throw new Error();
-        await push({ board: parsed });
-        showToast.success("تم استيراد أسئلة اللوحة بنجاح");
-      } catch { showToast.error("ملف غير صالح. تحقق من التنسيق."); }
+        const wb = await readExcelWorkbookFromFile(file);
+        const merged = mergeBoardFromWorkbook(wb, room.board);
+        if (!merged) throw new Error();
+        await push({ board: merged });
+        showToast.success("تم استيراد أسئلة اللوحة من Excel بنجاح");
+      } catch { showToast.error("ملف Excel غير صالح. استخدم تصدير اللوحة من التطبيق أو راجع الأعمدة."); }
     };
     input.click();
   };
@@ -1074,91 +1154,69 @@ export default function HostView() {
     showToast.success("تم حذف القالب.");
   };
   const exportTemplate = (tpl: StarterTemplate) => {
-    const blob = new Blob([JSON.stringify(tpl, null, 2)], { type:"application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href=url; a.download=`template-${tpl.name}.json`; a.click(); URL.revokeObjectURL(url);
-  };
-  const exportTemplateCsv = (tpl: StarterTemplate) => {
-    const rows: string[] = [];
-    rows.push(["اسم القالب","رقم السؤال","الحرف","السؤال","الإجابة الصحيحة","التصنيف","المستوى"].join(","));
-    (tpl.boardBanks || []).forEach((b) => {
-      (b.questionBank || []).forEach((q:any, idx:number) => {
-        const level = q.difficulty === "easy" ? "سهل" : q.difficulty === "hard" ? "صعب" : "متوسط";
-        const esc = (v:string) => `"${String(v || "").replace(/"/g,'""')}"`;
-        rows.push([esc(tpl.name), String(idx + 1), esc(b.label), esc(q.question), esc(q.answer), esc(q.category || "غير مصنف"), esc(level)].join(","));
-      });
+    if (!tpl.boardBanks?.length) {
+      showToast.warning("هذا القالب لا يحتوي على بنك حروف للتصدير. استخدم قالبًا كاملاً أو أضف أسئلة ثم احفظه.");
+      return;
+    }
+    exportTemplateToXlsx({
+      name: tpl.name,
+      categories: tpl.categories,
+      level: tpl.level,
+      boardBanks: tpl.boardBanks,
     });
-    const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `template-${tpl.name}.csv`; a.click(); URL.revokeObjectURL(url);
+    showToast.success("تم تصدير القالب بصيغة Excel");
   };
-  const importTemplateCsv = () => {
-    const input = document.createElement("input"); input.type = "file"; input.accept = ".csv,text/csv";
+  /** استيراد قالب جديد إلى «قوالب المجتمع» من ملف Excel (ليس استبدال اللوحة الحالية). */
+  const importTemplate = () => {
+    const input = document.createElement("input"); input.type = "file"; input.accept = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     input.onchange = async e => {
       try {
-        if (!room) return;
-        const ok = window.confirm("سيتم استبدال مجموعة الأسئلة الحالية بالملف المستورد. هل تريد المتابعة؟");
-        if (!ok) return;
         const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
-        const text = (await file.text()).replace(/^\uFEFF/, "");
-        const lines = text.split(/\r?\n/).filter(Boolean);
-        if (lines.length < 2) throw new Error();
-        const parse = (line:string) => (line.match(/("([^"]|"")*"|[^,]+)/g) || []).map(x => x.replace(/^"|"$/g, "").replace(/""/g, "\"").trim());
-        const banks = new Map<string, any[]>();
-        let skipped = 0;
-        lines.slice(1).forEach((line) => {
-          const cols = parse(line);
-          const letter = cols[2] || "";
-          const question = cols[3] || "";
-          const answer = cols[4] || "";
-          if (!letter || !question || !answer) { skipped += 1; return; }
-          const normLetter = normalizeArabicLetter(letter);
-          const normAnswer = normalizeArabicLetter(answer);
-          if (normLetter !== normAnswer) skipped += 1;
-          if (!banks.has(letter)) banks.set(letter, []);
-          banks.get(letter)!.push({
-            letter,
-            question,
-            answer,
-            category: cols[5] || "غير مصنف",
-            difficulty: cols[6] === "سهل" ? "easy" : cols[6] === "صعب" ? "hard" : "medium",
-            points: 1,
-            hint: "",
-            explanation: "",
-          });
-        });
-        if (!banks.size) throw new Error();
-        const nextBoard = room.board.map((cell) => {
-          const bank = banks.get(cell.label) || [];
-          const first = bank[0];
-          return { ...cell, question: first?.question || "", answer: first?.answer || "", category: first?.category || "", difficulty: (first?.difficulty || "medium") as BoardCell["difficulty"], ...( { questionBank: bank } as any) };
-        });
-        await push({ board: nextBoard });
-        if (skipped > 0) showToast.warning("تم تجاهل بعض الصفوف بسبب عدم تطابق الحرف مع الإجابة.");
-        showToast.success("تم استيراد الجدول بنجاح.");
+        const wb = await readExcelWorkbookFromFile(file);
+        const raw = parseTemplateWorkbookToStarter(wb);
+        if (!raw) throw new Error();
+        const safeBanks = raw.boardBanks.map((b) => ({
+          cellId: String(b.cellId || ""),
+          label: String(b.label || ""),
+          questionBank: (b.questionBank || []).map((q: any) => normalizeTemplateQuestion(q, String(b.label || ""), q.category || "غير مصنف")).filter((q: any) => q.question && q.answer),
+        }));
+        const tpl: StarterTemplate = {
+          id: raw.id,
+          name: raw.name,
+          categories: raw.categories,
+          level: raw.level,
+          questions: raw.questions,
+          boardBanks: safeBanks,
+          createdAt: raw.createdAt,
+          userCreated: true,
+        };
+        const next = [tpl, ...communityTemplates];
+        setCommunityTemplates(next);
+        localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
+        showToast.success("تم استيراد القالب من Excel بنجاح.");
       } catch {
-        showToast.error("تعذر استيراد الجدول. تأكد من تنسيق الملف.");
+        showToast.error("تعذر استيراد القالب. استخدم ملف Excel مُصدَّرًا من التطبيق أو راجع أوراق «Questions» و«Meta».");
       }
     };
     input.click();
   };
-  const importTemplate = () => {
-    const input = document.createElement("input"); input.type="file"; input.accept=".json";
+  /** استبدال أسئلة اللوحة الحالية من ملف Excel (نفس تنسيق تصدير اللوحة أو عمود «الحرف» مطابق لخانات اللوحة). */
+  const importBoardFromExcel = () => {
+    const input = document.createElement("input"); input.type = "file"; input.accept = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     input.onchange = async e => {
       try {
+        if (!room) return;
+        const ok = window.confirm("سيتم استبدال مجموعة الأسئلة الحالية بما في ملف Excel. هل تريد المتابعة؟");
+        if (!ok) return;
         const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
-        const parsed = JSON.parse(await file.text());
-        if (!parsed || typeof parsed.name!=="string") throw new Error();
-        const safeBanks = Array.isArray(parsed.boardBanks) ? parsed.boardBanks.map((b:any)=>({
-          cellId: String(b?.cellId || ""),
-          label: String(b?.label || ""),
-            questionBank: Array.isArray(b?.questionBank) ? b.questionBank.map((q:any)=>normalizeTemplateQuestion(q, String(b?.label || ""), "غير مصنف")).filter((q:any)=>q.question && q.answer) : [],
-          })) : [];
-        const tpl: StarterTemplate = { id:`u_${Date.now()}`, name:parsed.name, categories:Array.isArray(parsed.categories)?parsed.categories:["غير مصنف"], level:parsed.level==="سهل"||parsed.level==="متوسط"||parsed.level==="صعب"?parsed.level:"متوسط", questions:Array.isArray(parsed.questions)?parsed.questions:[], boardBanks:safeBanks, createdAt:new Date().toISOString(), userCreated:true };
-        const next=[tpl, ...communityTemplates];
-        setCommunityTemplates(next); localStorage.setItem(COMMUNITY_TEMPLATES_KEY, JSON.stringify(next));
-        showToast.success("تم استيراد القالب بنجاح.");
-      } catch { showToast.error("تعذر استيراد القالب. تأكد من أن الملف صحيح."); }
+        const wb = await readExcelWorkbookFromFile(file);
+        const merged = mergeBoardFromWorkbook(wb, room.board);
+        if (!merged) throw new Error();
+        await push({ board: merged });
+        showToast.success("تم استيراد اللوحة من Excel بنجاح.");
+      } catch {
+        showToast.error("تعذر استيراد Excel. تأكد أن الحرف يطابق أول حرف في الإجابة بعد التطبيع.");
+      }
     };
     input.click();
   };
@@ -1924,8 +1982,8 @@ export default function HostView() {
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
                 <input className="kc-input" style={{ maxWidth:240 }} placeholder="اسم القالب" value={templateName} onChange={e=>setTemplateName(e.target.value)} />
                 <button className="btn-gold" onClick={saveCurrentAsTemplate}>حفظ كقالب</button>
-                <button className="btn-secondary" onClick={importTemplate}>استيراد قالب</button>
-                <button className="btn-secondary" onClick={importTemplateCsv}>استيراد من جدول</button>
+                <button className="btn-secondary" onClick={importTemplate}>استيراد قالب (Excel)</button>
+                <button className="btn-secondary" onClick={importBoardFromExcel}>استيراد لوحة (Excel)</button>
               </div>
               <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.75rem" }}>
                 <input className="kc-input" style={{ maxWidth:240 }} placeholder="بحث عن قالب" value={templateSearch} onChange={e=>setTemplateSearch(e.target.value)} />
@@ -1959,8 +2017,7 @@ export default function HostView() {
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>setPreviewTemplate(tpl)}>معاينة</button>
                       <button className="btn-gold" style={{ fontSize:"0.75rem" }} onClick={()=>useTemplate(tpl)}>استخدم القالب</button>
                       <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>duplicateTemplate(tpl)}>تعديل نسخة</button>
-                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplate(tpl)}>تصدير القالب</button>
-                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplateCsv(tpl)}>تصدير كجدول</button>
+                      <button className="btn-secondary" style={{ fontSize:"0.75rem" }} onClick={()=>exportTemplate(tpl)}>تصدير Excel</button>
                       {tpl.userCreated && <button className="btn-danger" style={{ fontSize:"0.75rem" }} onClick={()=>deleteTemplate(tpl)}>حذف القالب</button>}
                     </div>
                   </div>
@@ -1981,7 +2038,7 @@ export default function HostView() {
             <div style={{ fontSize: "0.78rem", color: "#94a3b8", marginInlineEnd: "0.5rem" }}>التحكم أثناء اللعب:</div>
             <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={swapActiveTeam}>🔄 تبديل الفريق النشط</button>
             <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={undoLastAction}>↶ إلغاء آخر حركة</button>
-            <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={() => { exportBoard(); showToast.info("تم حفظ نسخة محلية من اللوحة بصيغة JSON."); }}>💾 حفظ اللعبة</button>
+            <button className="btn-secondary" style={{ fontSize: "0.78rem" }} onClick={() => { exportBoard(); showToast.info("تم حفظ نسخة محلية من اللوحة بصيغة Excel."); }}>💾 حفظ اللعبة</button>
             <button className="btn-danger" style={{ fontSize: "0.78rem", marginInlineStart: "auto" }} onClick={endGame}>🏁 إنهاء اللعبة</button>
           </div>
           <div className="kc-card" style={{ marginBottom:"0.85rem" }}>

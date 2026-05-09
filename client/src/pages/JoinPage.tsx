@@ -4,7 +4,6 @@ import { joinRoom } from "../lib/roomOps";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { showToast } from "../components/KcToast";
 import { t } from "../lib/i18n";
-import { useLanguage } from "../hooks/useLanguage";
 import KcLogo from "../components/KcLogo";
 
 function getParam(key: string): string {
@@ -14,7 +13,6 @@ function getParam(key: string): string {
 
 export default function JoinPage() {
   const [, setLocation] = useLocation();
-  const { language } = useLanguage();
   const [roomCode, setRoomCode] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [loading, setLoading] = useState(false);
