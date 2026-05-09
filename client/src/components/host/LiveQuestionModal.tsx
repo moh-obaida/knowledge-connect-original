@@ -79,7 +79,7 @@ export default function LiveQuestionModal({
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.4rem", marginBottom: "0.65rem" }}>
                 {activeQuestion!.choices!.map((c, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.35rem", padding: "0.45rem 0.6rem", borderRadius: 10, background: c === activeQuestion!.answer ? "rgba(34,197,94,0.12)" : "#0f1623", border: `1.5px solid ${c === activeQuestion!.answer ? "rgba(34,197,94,0.4)" : "#1a2332"}`, color: c === activeQuestion!.answer ? "#22c55e" : "#cbd5e1", fontWeight: 700 }}>
-                    <span style={{ fontSize: "0.74rem", color: "#94a3b8" }}>{String.fromCharCode(65 + i)}.</span>
+                    <span style={{ fontSize: "0.74rem", color: "#94a3b8" }}>{(["أ","ب","ج","د","هـ","و"][i] || String(i + 1))}.</span>
                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{c}</span>
                     {c === activeQuestion!.answer && <span style={{ fontSize: "0.7rem" }}>✓</span>}
                   </div>

@@ -109,6 +109,15 @@ html[data-theme="mid"] {
     line-height: 1.7;
     overflow-x: hidden;
   }
+  body > .skiptranslate,
+  iframe.skiptranslate,
+  .goog-te-banner-frame,
+  .goog-te-gadget,
+  .goog-te-combo,
+  #google_translate_element {
+    display: none !important;
+    visibility: hidden !important;
+  }
   input, textarea, select, button {
     font-family: 'Cairo', sans-serif;
   }
@@ -348,6 +357,12 @@ html[data-theme="mid"] {
 
   /* ── Timer ring ── */
   @keyframes timer-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .landing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.8rem;
+  }
 }
 
 
@@ -363,7 +378,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 @media (max-width: 1100px) {
   .responsive-game-layout,
-  .responsive-spectator-layout {
+  .responsive-spectator-layout,
+  .responsive-dashboard-hero {
     grid-template-columns: 1fr !important;
   }
 }

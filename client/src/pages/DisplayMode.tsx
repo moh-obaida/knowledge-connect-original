@@ -133,7 +133,7 @@ export default function DisplayMode() {
                           const isCorrect = room.answerVisibleToParticipants && c === room.activeQuestion!.answer;
                           return (
                             <div key={i} style={{ padding: "0.5rem 0.6rem", borderRadius: 10, background: isCorrect ? "rgba(34,197,94,0.18)" : "#141e2d", border: `1.5px solid ${isCorrect ? "rgba(34,197,94,0.5)" : "#1a2332"}`, color: isCorrect ? "#22c55e" : "#cbd5e1", fontWeight: 700 }}>
-                              {String.fromCharCode(65 + i)}. {c}{isCorrect ? " ✓" : ""}
+                              {(["أ","ب","ج","د","هـ","و"][i] || String(i + 1))}. {c}{isCorrect ? " ✓" : ""}
                             </div>
                           );
                         })}
