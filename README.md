@@ -86,16 +86,36 @@
 
 #### للتطوير المحلي
 
-أنشئ ملف `.env` في مجلد المشروع الرئيسي:
+1. في **جذر المستودع** (حيث يوجد `package.json` و`vite.config.ts`)، انسخ القالب ثم عدّل القيم:
+   ```bash
+   cp .env.example .env
+   ```
+2. افتح `.env` واستبدل كل قيمة `replace-with-...` / `your-project-id` بقيم `firebaseConfig` من Firebase Console.
+
+**المتغيرات السبعة المطلوبة** (كلها بادئة `VITE_FIREBASE_` وتُمرَّر إلى عميل Vite):
+
+| المتغير | ملاحظة |
+|---------|--------|
+| `VITE_FIREBASE_API_KEY` | مطلوب؛ مع `DATABASE_URL` يحددان اعتبار Firebase «مُعدّاً» في الواجهة |
+| `VITE_FIREBASE_AUTH_DOMAIN` | مطلوب لتهيئة التطبيق |
+| `VITE_FIREBASE_DATABASE_URL` | مطلوب لـ Realtime Database |
+| `VITE_FIREBASE_PROJECT_ID` | مطلوب لتهيئة التطبيق |
+| `VITE_FIREBASE_STORAGE_BUCKET` | مطلوب لتهيئة التطبيق |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | مطلوب لتهيئة التطبيق |
+| `VITE_FIREBASE_APP_ID` | مطلوب لتهيئة التطبيق |
+
+> لا ترفع ملف `.env` إلى Git — هو مستبعد في `.gitignore`. استخدم `.env.example` فقط كقالب بلا أسرار.
+
+قالب بقيم وهمية (راجع أيضاً `.env.example` في الجذر):
 
 ```env
-VITE_FIREBASE_API_KEY=AIzaSyAbc123...
-VITE_FIREBASE_AUTH_DOMAIN=my-project.firebaseapp.com
-VITE_FIREBASE_DATABASE_URL=https://my-project-default-rtdb.firebaseio.com
-VITE_FIREBASE_PROJECT_ID=my-project
-VITE_FIREBASE_STORAGE_BUCKET=my-project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123456789:web:abc123
+VITE_FIREBASE_API_KEY=replace-with-your-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+VITE_FIREBASE_DATABASE_URL=https://your-project-id-default-rtdb.firebaseio.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=000000000000
+VITE_FIREBASE_APP_ID=1:000000000000:web:0000000000000000000000
 ```
 
 #### للنشر على Netlify
@@ -135,18 +155,20 @@ VITE_FIREBASE_APP_ID=1:123456789:web:abc123
 
 ## التشغيل المحلي
 
-```bash
-# تثبيت الاعتماديات
-npm install
+بعد إنشاء `.env` من `.env.example` وملء متغيرات Firebase:
 
-# تشغيل خادم التطوير
-npm run dev
+```bash
+# تثبيت الاعتماديات (إن لم يكن pnpm متاحاً كأمر مباشر، استخدم npx)
+npx pnpm install
+
+# تشغيل خادم التطوير (المنفذ الافتراضي 3000 حسب إعداد Vite)
+npx pnpm dev
 
 # بناء للإنتاج
-npm run build
+npx pnpm build
 ```
 
-افتح المتصفح على: `http://localhost:5173`
+افتح المتصفح على: `http://localhost:3000` (أو المنفذ الذي يطبعه Vite إذا كان 3000 مستخدماً).
 
 ---
 
