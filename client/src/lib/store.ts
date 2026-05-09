@@ -448,6 +448,120 @@ export function generateBoard(
   );
 }
 
+function mergeStoredQuestionListsForRebuild(lists: StoredQuestionItem[][]): StoredQuestionItem[] {
+  const seen = new Set<string>();
+  const out: StoredQuestionItem[] = [];
+  for (const list of lists) {
+    for (const q of list) {
+      const sig = questionDedupeSignature(q);
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      out.push(q);
+    }
+  }
+  return out;
+}
+
+/**
+ * Rebuilds the grid for new size / style / Arabic letter set and keeps all questions:
+ * places them on matching letter keys, and leaves the rest in questionBankByLetter.
+ */
+export function rebuildBoardPreservingBanks(
+  oldRoom: RoomState,
+  gridSize: 4 | 5 | 6,
+  cellLabelStyle: RoomState["cellLabelStyle"],
+  boardOpts: { arabicLetterSet?: ArabicLetterSet; customArabicLetters?: string } = {},
+): { board: BoardCell[]; questionBankByLetter: QuestionBankByLetter } {
+  const newBoard = generateBoard(gridSize, cellLabelStyle, boardOpts);
+  const activeKeys = new Set(newBoard.map((c) => getBoardLetterKey(c)));
+
+  const listsByKey = new Map<string, StoredQuestionItem[][]>();
+  const pushList = (key: string, list: StoredQuestionItem[]) => {
+    if (!key || !list.length) return;
+    if (!listsByKey.has(key)) listsByKey.set(key, []);
+    listsByKey.get(key)!.push(list);
+  };
+
+  for (const cell of oldRoom.board) {
+    const key = getBoardLetterKey(cell);
+    const local: StoredQuestionItem[] = [];
+    const qb = (cell as BoardCell & { questionBank?: unknown[] }).questionBank;
+    if (Array.isArray(qb)) {
+      for (const raw of qb) {
+        const q = ensureStoredQuestion(raw as Record<string, unknown>, key);
+        if (q) local.push(q);
+      }
+    }
+    if (!local.length && String(cell.question || "").trim()) {
+      const q = ensureStoredQuestion(
+        {
+          question: cell.question,
+          answer: cell.answer,
+          category: cell.category,
+          difficulty: cell.difficulty,
+          points: cell.points,
+          hint: cell.hint,
+          explanation: cell.explanation,
+        } as Record<string, unknown>,
+        key,
+      );
+      if (q) local.push(q);
+    }
+    if (local.length) pushList(key, local);
+  }
+
+  for (const [k, items] of Object.entries(oldRoom.questionBankByLetter || {})) {
+    const key = normalizeBoardLetter(k);
+    const local: StoredQuestionItem[] = [];
+    for (const item of items) {
+      const q = ensureStoredQuestion(item as Record<string, unknown>, key);
+      if (q) local.push(q);
+    }
+    if (local.length) pushList(key, local);
+  }
+
+  const mergedByKey = new Map<string, StoredQuestionItem[]>();
+  listsByKey.forEach((lists, key) => {
+    mergedByKey.set(key, mergeStoredQuestionListsForRebuild(lists));
+  });
+
+  const reserve: QuestionBankByLetter = {};
+  const board = newBoard.map((cell) => {
+    const key = getBoardLetterKey(cell);
+    const items = mergedByKey.get(key) || [];
+    if (!items.length) {
+      return syncBoardCellLetters({
+        ...cell,
+        question: "",
+        answer: "",
+        category: "",
+        difficulty: "easy",
+        points: 1,
+        hint: "",
+        explanation: "",
+      });
+    }
+    const first = items[0];
+    return syncBoardCellLetters({
+      ...cell,
+      question: first.question,
+      answer: first.answer,
+      category: first.category,
+      difficulty: first.difficulty,
+      points: first.points,
+      hint: first.hint,
+      explanation: first.explanation,
+      ...( { questionBank: items } as Partial<BoardCell> ),
+    });
+  });
+
+  mergedByKey.forEach((items, key) => {
+    if (!activeKeys.has(key) && items.length) reserve[key] = items;
+  });
+
+  return { board, questionBankByLetter: reserve };
+}
+
 export function shuffleBoard(board: BoardCell[]): BoardCell[] {
   const positions = board.map((_, i) => i);
   for (let i = positions.length - 1; i > 0; i--) {
