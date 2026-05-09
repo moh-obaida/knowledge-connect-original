@@ -5,6 +5,6 @@ export function generateMockQuestions(req: AiRequest) {
     question: `(${i+1}) سؤال تجريبي عن ${req.topic} - ${req.subject}`,
     answer: req.questionType === "tf" ? "صحيح" : "إجابة نموذجية",
     type: req.questionType,
-    note: "Prototype: AI connection coming later",
+    note: "نسخة تجريبية: سيتم تفعيل المساعد الذكي لاحقًا",
   }));
 }

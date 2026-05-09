@@ -264,7 +264,7 @@ export default function ParticipantView() {
         <div className="responsive-spectator-layout" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
           {/* Board */}
           <div style={{ background:surface.card, border:`1.5px solid ${surface.border}`, borderRadius:"20px", padding:"1rem", overflow:"hidden", gridColumn:"1" }}>
-            <div style={{ fontSize:"0.78rem", fontWeight:700, color:surface.muted, textAlign:"center", marginBottom:"0.5rem" }}>لوحة اللعب</div>
+            <div style={{ fontSize:"0.78rem", fontWeight:700, color:surface.muted, textAlign:"center", marginBottom:"0.5rem" }}>لوحة الحروف</div>
             {/* Path goal legend */}
             <div style={{ display:"flex", gap:"1rem", justifyContent:"center", marginBottom:"0.5rem", flexWrap:"wrap" }}>
               <div style={{ display:"flex", alignItems:"center", gap:"0.3rem" }}>
@@ -283,6 +283,7 @@ export default function ParticipantView() {
           {/* Question + timer */}
           <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
             {/* Timer */}
+            <div style={{ textAlign:"center", fontSize:"0.76rem", color:surface.muted, fontWeight:700 }}>المؤقت</div>
             {timerRunning && timerMax > 0 && (
               <div style={{ display:"flex", justifyContent:"center" }}>
                 <TimerRing value={timerValue} max={timerMax} />
@@ -293,6 +294,9 @@ export default function ParticipantView() {
                 ⏰ انتهى الوقت!
               </div>
             )}
+            <div style={{ textAlign:"center", fontSize:"0.76rem", color:surface.muted, fontWeight:700 }}>
+              الدور الحالي: {room.activeTeam === 1 ? team1.name : team2.name}
+            </div>
 
             {/* Question card */}
             {activeQuestion ? (
@@ -374,10 +378,8 @@ export default function ParticipantView() {
             ) : (
               <div style={{ background:surface.card, border:`1.5px solid ${surface.border}`, borderRadius:"20px", padding:"3rem", textAlign:"center", flex:1 }}>
                 <div style={{ fontSize:"3rem", marginBottom:"1rem" }}>⏳</div>
-                <div style={{ fontSize:"1.1rem", fontWeight:700, color:surface.text, marginBottom:"0.5rem" }}>بانتظار السؤال التالي...</div>
-                <div style={{ color:surface.muted, fontSize:"0.9rem" }}>يتم الآن اختيار الحرف التالي</div>
-                <div style={{ fontSize:"1.1rem", fontWeight:700, color:"#f0ede8", marginBottom:"0.5rem" }}>بانتظار السؤال التالي...</div>
-                <div style={{ color:"#64748b", fontSize:"0.9rem" }}>يتم الآن اختيار الحرف التالي</div>
+                <div style={{ fontSize:"1.1rem", fontWeight:700, color:surface.text, marginBottom:"0.5rem" }}>بانتظار اختيار الحرف</div>
+                <div style={{ color:surface.muted, fontSize:"0.9rem" }}>سيعرض المضيف السؤال الحالي بعد اختيار الحرف.</div>
               </div>
             )}
           </div>

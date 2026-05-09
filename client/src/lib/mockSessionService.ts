@@ -10,7 +10,7 @@ export function createMockSession(partial?: Partial<ClassroomSession>): Classroo
   return {
     code: generateCode(),
     title: "حصة تفاعلية",
-    templateName: "Arabic Letters Adventure",
+    templateName: "مغامرة الحروف العربية",
     mode: "classic",
     timerSec: 30,
     allowSkips: true,

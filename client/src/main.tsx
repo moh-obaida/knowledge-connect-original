@@ -4,4 +4,8 @@ import App from "./App";
 import "./index.css";
 
 applyLanguage();
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <div dir="rtl" lang="ar">
+    <App />
+  </div>,
+);

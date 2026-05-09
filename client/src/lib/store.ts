@@ -136,8 +136,8 @@ export function sortedBoard(board: BoardCell[]): BoardCell[] {
 
 export function defaultRoomState(roomCode: string): RoomState {
   const gridSize: 4 | 5 | 6 = 5;
-  const language = (typeof window !== "undefined" ? localStorage.getItem("kc_language") : "ar") === "en" ? "en" : "ar";
-  const cellLabelStyle: RoomState["cellLabelStyle"] = language === "en" ? "english" : "arabic";
+  const language: "ar" = "ar";
+  const cellLabelStyle: RoomState["cellLabelStyle"] = "arabic";
   return {
     roomCode,
     gameTitle: "وصلة المعرفة",
@@ -149,8 +149,8 @@ export function defaultRoomState(roomCode: string): RoomState {
     winningMode: "path",
     timerSetting: 0,
     stealMode: "none",
-    team1: { name: language === "en" ? "Blue Team" : "الفريق الأزرق", color: "#2563eb", initials: language === "en" ? "B" : "ز" },
-    team2: { name: language === "en" ? "Red Team" : "الفريق الأحمر", color: "#ef4444", initials: language === "en" ? "R" : "ح" },
+    team1: { name: "الفريق الأزرق", color: "#2563eb", initials: "ز" },
+    team2: { name: "الفريق الأحمر", color: "#ef4444", initials: "ح" },
     team1Score: 0,
     team2Score: 0,
     board: generateBoard(gridSize, cellLabelStyle),
@@ -195,6 +195,9 @@ export function checkWinner(board: BoardCell[], gridSize: number): 0 | 1 | 2 {
 }
 export function getHexNeighbors(index: number, size: number): number[] {
   const r = Math.floor(index / size), c = index % size;
+  // Board rendering uses odd rows shifted to the right (odd-r horizontal layout).
+  // Neighbor offsets must follow the same coordinate system to correctly detect
+  // curved / zigzag connected paths for Hex wins.
   const deltas = r % 2 === 0
     ? [[-1, 0], [-1, -1], [0, -1], [0, 1], [1, 0], [1, -1]]
     : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];

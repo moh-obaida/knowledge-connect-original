@@ -14,7 +14,6 @@ function getParam(key: string): string {
 export default function JoinPage() {
   const [, setLocation] = useLocation();
   const { language } = useLanguage();
-  const isAr = language === "ar";
   const [roomCode, setRoomCode] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,7 +69,7 @@ export default function JoinPage() {
       {/* Logo */}
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
         <div style={{ fontSize:"clamp(2.4rem, 8vw, 3.5rem)", fontWeight:900, color:"#f59e0b", fontFamily:"Cairo,sans-serif", lineHeight:1.1 }}>
-          {isAr ? "وصلة المعرفة" : "Knowledge Connect"}
+          وصلة المعرفة
         </div>
         <div style={{ fontSize:"1rem", fontWeight:700, color:"#cbd5e1", marginTop:"0.5rem" }}>
           {t("join.joinChallenge")}
