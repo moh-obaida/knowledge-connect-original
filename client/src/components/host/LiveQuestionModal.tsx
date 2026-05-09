@@ -108,7 +108,7 @@ export default function LiveQuestionModal({
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.4rem" }}>
               <button className={room.answerVisibleToParticipants ? "btn-secondary" : "btn-gold"} style={{ fontSize: "0.82rem" }} onClick={onRevealToParticipants}>
-                {room.answerVisibleToParticipants ? "🔒 إخفاء الإجابة" : "📢 عرض السؤال للطلاب"}
+                {room.answerVisibleToParticipants ? "🔒 إخفاء الإجابة" : "📢 كشف الإجابة للطلاب"}
               </button>
               <button className="btn-green" style={{ fontSize: "0.82rem", background: `${room.team1.color}22`, color: room.team1.color, borderColor: `${room.team1.color}66` }} onClick={() => onAwardTeam(1)}>✅ احتساب: {room.team1.name}</button>
               <button className="btn-green" style={{ fontSize: "0.82rem", background: `${room.team2.color}22`, color: room.team2.color, borderColor: `${room.team2.color}66` }} onClick={() => onAwardTeam(2)}>✅ احتساب: {room.team2.name}</button>

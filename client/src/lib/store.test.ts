@@ -9,6 +9,19 @@ function claimedBoard(size: 4 | 5 | 6, team: 1 | 2, positions: number[]) {
 }
 
 describe("مسار الفوز في لوحة الحروف", () => {
+  it("ينشئ لوحة ٥×٥ بخمسة وعشرين حرفاً عربياً دون خلايا فارغة", () => {
+    const board = generateBoard(5, "arabic");
+
+    expect(board).toHaveLength(25);
+    expect(board.map((cell) => cell.label)).toEqual([
+      "ا", "ب", "ت", "ث", "ج",
+      "ح", "خ", "د", "ذ", "ر",
+      "ز", "س", "ش", "ص", "ض",
+      "ط", "ظ", "ع", "غ", "ف",
+      "ق", "ك", "ل", "م", "ن",
+    ]);
+  });
+
   it("يحسب الجيران حسب إزاحة الصفوف الفردية", () => {
     expect(getHexNeighbors(6, 4).sort((a, b) => a - b)).toEqual([2, 3, 5, 7, 10, 11]);
   });

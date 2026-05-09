@@ -68,7 +68,7 @@ export default function JoinPage() {
 
       {/* Logo */}
       <div style={{ marginBottom:"1.5rem", textAlign:"center" }}>
-        <div style={{ fontSize:"clamp(2.4rem, 8vw, 3.5rem)", fontWeight:900, color:"#f59e0b", fontFamily:"Cairo,sans-serif", lineHeight:1.1 }}>
+        <div style={{ fontSize:"clamp(2.4rem, 8vw, 3.5rem)", fontWeight:900, color:"#f59e0b", fontFamily:"var(--kc-font-arabic)", lineHeight:1.1 }}>
           وصلة المعرفة
         </div>
         <div style={{ fontSize:"1rem", fontWeight:700, color:"#cbd5e1", marginTop:"0.5rem" }}>
@@ -111,7 +111,7 @@ export default function JoinPage() {
                 borderRadius:"12px", padding:"0.75rem 1rem",
                 textAlign:"center", fontSize:"1.8rem", fontWeight:900,
                 letterSpacing:"0.3em", color:"#f59e0b", outline:"none",
-                fontFamily:"Cairo,sans-serif", transition:"border-color 0.15s ease",
+                fontFamily:"var(--kc-font-arabic)", transition:"border-color 0.15s ease",
               }}
               onFocus={e => (e.currentTarget.style.borderColor="#f59e0b")}
               onBlur={e => (e.currentTarget.style.borderColor="#1a2332")}
@@ -133,7 +133,7 @@ export default function JoinPage() {
                 width:"100%", background:"#141e2d", border:"2px solid #1a2332",
                 borderRadius:"12px", padding:"0.75rem 1rem",
                 fontSize:"1rem", color:"#f0ede8", outline:"none",
-                fontFamily:"Cairo,sans-serif", transition:"border-color 0.15s ease",
+                fontFamily:"var(--kc-font-arabic)", transition:"border-color 0.15s ease",
               }}
               onFocus={e => (e.currentTarget.style.borderColor="#f59e0b")}
               onBlur={e => (e.currentTarget.style.borderColor="#1a2332")}
@@ -158,7 +158,7 @@ export default function JoinPage() {
               color:"#090d18", border:"none",
               opacity: loading ? 0.7 : 1,
               transition:"all 0.15s ease",
-              fontFamily:"Cairo,sans-serif",
+              fontFamily:"var(--kc-font-arabic)",
             }}
             onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.transform="translateY(-2px)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform="translateY(0)"; }}

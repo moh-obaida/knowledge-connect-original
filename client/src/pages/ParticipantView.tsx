@@ -32,7 +32,7 @@ function TimerRing({ value, max }: { value: number; max: number }) {
       </svg>
       <div style={{
         position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
-        fontWeight:900, fontSize:"1.5rem", color, fontFamily:"Cairo,sans-serif",
+        fontWeight:900, fontSize:"1.5rem", color, fontFamily:"var(--kc-font-arabic)",
         animation: value<=5&&value>0 ? "timerPulse 0.5s ease-in-out infinite" : "none",
       }}>{value}</div>
       <style>{`@keyframes timerPulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
@@ -93,8 +93,6 @@ export default function ParticipantView() {
         <div style={{ fontSize:"3rem", marginBottom:"1rem" }}>⚙️</div>
         <div style={{ fontSize:"1.25rem", fontWeight:700, color:accent, marginBottom:"0.5rem" }}>تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا.</div>
         <div style={{ color:surface.muted, fontSize:"0.9rem", marginBottom:"1.5rem" }}>يرجى مراجعة إعدادات المشروع أو التواصل مع المسؤول.</div>
-        <div style={{ fontSize:"1.25rem", fontWeight:700, color:"#f59e0b", marginBottom:"0.5rem" }}>تعذر الاتصال بالخدمة. يرجى المحاولة لاحقًا.</div>
-        <div style={{ color:"#64748b", fontSize:"0.9rem", marginBottom:"1.5rem" }}>يرجى مراجعة إعدادات المشروع أو التواصل مع المسؤول.</div>
         <a href="/join" style={{ display:"inline-block", padding:"0.6rem 1.5rem", background:"#f59e0b", color:"#090d18", borderRadius:"10px", fontWeight:700, textDecoration:"none" }}>العودة</a>
       </div>
     </div>
@@ -197,7 +195,7 @@ export default function ParticipantView() {
       {/* Page badge + fullscreen */}
       <div style={{ position:"fixed", top:"0.75rem", left:"0.75rem", zIndex:50, display:"flex", gap:"0.4rem" }}>
         <div style={{ fontSize:"0.65rem", padding:"0.2rem 0.55rem", borderRadius:"9999px", background:surface.card, color:surface.muted, fontWeight:600 }}>🏷 شاشة العرض</div>
-        <button onClick={toggleFullscreen} style={{ fontSize:"0.65rem", padding:"0.2rem 0.55rem", borderRadius:"9999px", background:surface.card, color:surface.muted, border:"none", cursor:"pointer", fontFamily:"Cairo,sans-serif" }}>
+        <button onClick={toggleFullscreen} style={{ fontSize:"0.65rem", padding:"0.2rem 0.55rem", borderRadius:"9999px", background:surface.card, color:surface.muted, border:"none", cursor:"pointer", fontFamily:"var(--kc-font-arabic)" }}>
           {fullscreen ? "⊡ خروج" : "⛶ ملء الشاشة"}
         </button>
       </div>
@@ -207,7 +205,7 @@ export default function ParticipantView() {
         <div className="winner-overlay">
           <div className="winner-card" style={{ borderColor: winnerTeam===1?team1.color:winnerTeam===2?team2.color:accent }}>
             <div style={{ fontSize:"5rem", marginBottom:"1rem" }}>🏆</div>
-            <div style={{ fontSize:"2.5rem", fontWeight:900, color: winnerTeam===1?team1.color:winnerTeam===2?team2.color:accent, fontFamily:"Cairo,sans-serif" }}>
+            <div style={{ fontSize:"2.5rem", fontWeight:900, color: winnerTeam===1?team1.color:winnerTeam===2?team2.color:accent, fontFamily:"var(--kc-font-arabic)" }}>
               {winnerMessage}
             </div>
           </div>
@@ -277,7 +275,7 @@ export default function ParticipantView() {
               </div>
             </div>
             <HexBoard board={board} gridSize={gridSize} mode="participant"
-              selectedCellId={selectedCellId} team1={team1} team2={team2} compact />
+              selectedCellId={selectedCellId} team1={team1} team2={team2} />
           </div>
 
           {/* Question + timer */}
@@ -322,7 +320,7 @@ export default function ParticipantView() {
                   </span>
                 </div>
 
-                <div style={{ fontSize:"1.3rem", fontWeight:700, color:surface.text, lineHeight:1.7, marginBottom:"0.85rem", direction:"rtl" }}>
+                <div style={{ fontSize:"clamp(2rem, 4.8vw, 3.1rem)", fontWeight:900, color:surface.text, lineHeight:1.45, marginBottom:"0.85rem", direction:"rtl" }}>
                   {activeQuestion.question}
                 </div>
 
@@ -364,7 +362,7 @@ export default function ParticipantView() {
                 {answerVisibleToParticipants ? (
                   <div style={{ borderRadius:"12px", padding:"0.85rem 1rem", background:"rgba(22,163,74,0.12)", border:"2px solid rgba(22,163,74,0.4)" }}>
                     <div style={{ fontSize:"0.72rem", fontWeight:700, color:"#22c55e", marginBottom:"0.3rem" }}>✅ الإجابة الصحيحة</div>
-                    <div style={{ fontSize:"1.2rem", fontWeight:700, color:surface.text }}>{activeQuestion.answer}</div>
+                    <div style={{ fontSize:"clamp(1.7rem, 4vw, 2.6rem)", fontWeight:900, color:surface.text }}>{activeQuestion.answer}</div>
                     {activeQuestion.explanation && (
                       <div style={{ fontSize:"0.82rem", color:"#94a3b8", marginTop:"0.4rem" }}>{activeQuestion.explanation}</div>
                     )}
