@@ -1,0 +1,35 @@
+import { describe, expect, it } from "vitest";
+import { checkWinner, findWinningPath, generateBoard, getHexNeighbors } from "./store";
+
+function claimedBoard(size: 4 | 5 | 6, team: 1 | 2, positions: number[]) {
+  return generateBoard(size, "arabic").map((cell, index) => ({
+    ...cell,
+    claimedBy: positions.includes(index) ? team : 0,
+  }));
+}
+
+describe("مسار الفوز في لوحة الحروف", () => {
+  it("يحسب الجيران حسب إزاحة الصفوف الفردية", () => {
+    expect(getHexNeighbors(6, 4).sort((a, b) => a - b)).toEqual([1, 2, 5, 7, 9, 10]);
+  });
+
+  it("يكتشف مساراً متعرجاً من اليسار إلى اليمين للفريق الأول", () => {
+    const board = claimedBoard(4, 1, [0, 4, 5, 9, 10, 14, 15]);
+
+    expect(checkWinner(board, 4)).toBe(1);
+    expect(findWinningPath(board, 4, 1)).toEqual(["cell-0", "cell-4", "cell-5", "cell-9", "cell-10", "cell-14", "cell-15"]);
+  });
+
+  it("يكتشف مساراً متعرجاً من الأعلى إلى الأسفل للفريق الثاني", () => {
+    const board = claimedBoard(4, 2, [1, 5, 9, 12]);
+
+    expect(checkWinner(board, 4)).toBe(2);
+    expect(findWinningPath(board, 4, 2)).toEqual(["cell-1", "cell-5", "cell-9", "cell-12"]);
+  });
+
+  it("لا يعلن فائزاً عندما لا يكتمل المسار", () => {
+    const board = claimedBoard(4, 1, [0, 4, 5, 9, 10]);
+
+    expect(checkWinner(board, 4)).toBe(0);
+  });
+});

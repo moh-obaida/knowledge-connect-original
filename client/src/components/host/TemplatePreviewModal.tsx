@@ -22,7 +22,7 @@ export default function TemplatePreviewModal({ previewTemplate, onClose }: { pre
         <div style={{ fontWeight:800, color:"#f59e0b", marginBottom:"0.45rem" }}>{t('template.preview')}</div>
         <div style={{ fontWeight:700, color:"#f0ede8", marginBottom:"0.35rem" }}>{previewTemplate.name}</div>
         <div style={{ fontSize:"0.8rem", color:"#94a3b8", marginBottom:"0.8rem" }}>
-          {t('template.questions')}: {previewTemplate.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || previewTemplate.questions.length} • {t('template.covered')}: {coveredLabel} • {language === 'ar' ? 'اللغة' : 'Language'}: {previewTemplate.language === 'en' ? t('template.languageEnglish') : t('template.languageArabic')}
+          {t('template.questions')}: {previewTemplate.boardBanks?.reduce((n,b)=>n+(b.questionBank?.length||0),0) || previewTemplate.questions.length} • {t('template.covered')}: {coveredLabel} • اللغة: {previewTemplate.language === 'en' ? t('template.languageEnglish') : t('template.languageArabic')}
         </div>
         {previewTemplate.boardBanks && previewTemplate.boardBanks.length > 0 && (
           <div style={{ fontSize:"0.75rem", color:"#64748b", marginBottom:"0.55rem" }}>

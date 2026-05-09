@@ -332,7 +332,7 @@ export default function ParticipantView() {
                       const isCorrect = answerVisibleToParticipants && c === activeQuestion.answer;
                       return (
                         <div key={i} style={{ display:"flex", alignItems:"center", gap:"0.4rem", padding:"0.55rem 0.7rem", borderRadius:12, background: isCorrect ? "rgba(34,197,94,0.15)" : "#141e2d", border: `1.5px solid ${isCorrect ? "rgba(34,197,94,0.45)" : "#1a2332"}`, color: isCorrect ? "#22c55e" : surface.text, fontWeight:700, fontSize:"1rem" }}>
-                          <span style={{ fontSize:"0.78rem", color:isCorrect ? "#22c55e" : surface.muted, fontWeight:700, minWidth:18 }}>{String.fromCharCode(65 + i)}.</span>
+                          <span style={{ fontSize:"0.78rem", color:isCorrect ? "#22c55e" : surface.muted, fontWeight:700, minWidth:18 }}>{(["أ","ب","ج","د","هـ","و"][i] || String(i + 1))}.</span>
                           <span style={{ flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis" }}>{c}</span>
                           {isCorrect && <span>✓</span>}
                         </div>

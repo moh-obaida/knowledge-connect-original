@@ -79,6 +79,12 @@ export function checkAnswer(q: QuizQuestion, userAnswer: unknown) {
   const isExactMatch = normalizedUser === normalizedCorrect;
   const targetLetter = normalizeArabicLetter(q.letter);
   const startsWithTargetLetter = Boolean(targetLetter) && normalizedUser.startsWith(targetLetter);
-  const isCorrect = isExactMatch || (q.type === "letter" && startsWithTargetLetter);
+  const promptAsksForLetter = /(^|\s)(كلمة|مثال|مفردة).*(تبدأ|يبدأ|بحرف|حرف)/.test(normalizedArabicPrompt(q.prompt));
+  const isLetterAnswer = q.type === "letter" || promptAsksForLetter;
+  const isCorrect = isExactMatch || (isLetterAnswer && startsWithTargetLetter);
   return { isCorrect, correctAnswer: q.correctAnswer, feedback: isCorrect ? "إجابة صحيحة!" : "إجابة خاطئة" };
+}
+
+function normalizedArabicPrompt(value: string) {
+  return normalizeArabicText(value);
 }
