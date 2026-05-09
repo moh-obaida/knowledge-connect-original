@@ -244,5 +244,5 @@ const linkBack: React.CSSProperties = {
   color: "#cbd5e1",
   fontWeight: 600,
   textDecoration: "none",
-  fontFamily: "Cairo,sans-serif",
+  fontFamily: "var(--kc-font-arabic)",
 };

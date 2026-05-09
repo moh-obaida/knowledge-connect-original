@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -53,6 +54,14 @@
   --bg-page: #090d18;
   --bg-top: #111a2b;
   --surface-soft: #141e2d;
+  --kc-font-arabic: "Tajawal", "Cairo", "Noto Kufi Arabic", "Noto Sans Arabic", system-ui, sans-serif;
+  --kc-purple: #2e1065;
+  --kc-purple-soft: #4c1d95;
+  --kc-gold: #f59e0b;
+  --kc-ivory: #fffaf0;
+  --kc-ink: #160f2e;
+  --kc-blue: #2563eb;
+  --kc-red: #ef4444;
 }
 
 html[data-theme="light"] {
@@ -94,7 +103,7 @@ html[data-theme="mid"] {
   html {
     direction: rtl;
     lang: ar;
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
   }
@@ -102,7 +111,7 @@ html[data-theme="mid"] {
     background: radial-gradient(circle at top, var(--bg-top) 0%, var(--bg-page) 45%);
     background: radial-gradient(circle at top, #111a2b 0%, var(--background) 45%);
     color: var(--foreground);
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
     direction: rtl;
     text-align: right;
     min-height: 100vh;
@@ -119,7 +128,7 @@ html[data-theme="mid"] {
     visibility: hidden !important;
   }
   input, textarea, select, button {
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
   }
   input, textarea, select {
     direction: rtl;
@@ -154,7 +163,7 @@ html[data-theme="mid"] {
     border-radius: 10px;
     padding: 0.55rem 0.85rem;
     color: var(--foreground);
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
     font-size: 0.9rem;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
     direction: rtl;
@@ -174,7 +183,7 @@ html[data-theme="mid"] {
     border-radius: 10px;
     padding: 0.55rem 1.2rem;
     border: none;
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
     font-size: 0.9rem;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
     white-space: nowrap;
@@ -194,7 +203,7 @@ html[data-theme="mid"] {
     border-radius: 10px;
     padding: 0.55rem 1.2rem;
     border: 1.5px solid var(--border);
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
     font-size: 0.9rem;
     transition: all 0.12s ease;
     white-space: nowrap;
@@ -210,7 +219,7 @@ html[data-theme="mid"] {
     border-radius: 10px;
     padding: 0.55rem 1.2rem;
     border: 1.5px solid rgba(239,68,68,0.3);
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
     font-size: 0.9rem;
     transition: all 0.12s ease;
     white-space: nowrap;
@@ -226,7 +235,7 @@ html[data-theme="mid"] {
     border-radius: 10px;
     padding: 0.55rem 1.2rem;
     border: 1.5px solid rgba(22,163,74,0.3);
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
     font-size: 0.9rem;
     transition: all 0.12s ease;
     white-space: nowrap;
@@ -265,7 +274,7 @@ html[data-theme="mid"] {
     background: transparent;
     border: 1.5px solid transparent;
     white-space: nowrap;
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
   }
   .tab-btn:hover { color: #f0ede8; background: #1a2332; }
   .tab-btn.active { background: #f59e0b; color: #090d18; border-color: #f59e0b; }
@@ -286,7 +295,7 @@ html[data-theme="mid"] {
     color: #3d5068;
     user-select: none;
     position: relative;
-    font-family: 'Cairo', sans-serif;
+    font-family: var(--kc-font-arabic);
   }
   .board-cell:hover { border-color: #f59e0b; color: #f0ede8; transform: scale(1.06); z-index: 2; }
   .board-cell.team1 {

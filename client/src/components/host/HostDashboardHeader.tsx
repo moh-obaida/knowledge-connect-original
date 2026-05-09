@@ -46,7 +46,7 @@ export default function HostDashboardHeader(p: Props) {
           <button className="btn-secondary" style={{ fontSize:"0.75rem", minHeight: 40 }} onClick={()=>p.copyText(p.joinLink,t('hostHeader.joinLink'))}>📋 {t('hostHeader.copyStudentJoinLink')}</button>
           <button className="btn-secondary" style={{ fontSize:"0.75rem", minHeight: 40 }} onClick={()=>window.open(`/join?room=${roomCode}`,"_blank")}>🔗 {t('hostHeader.openJoinPage')}</button>
           <button className="btn-secondary" style={{ fontSize:"0.75rem", minHeight: 40 }} onClick={()=>p.copyText(p.displayLink,t('hostHeader.displayLink'))}>📺 {t('hostHeader.copyDisplayLink')}</button>
-          <button className="btn-secondary" style={{ fontSize:"0.75rem", minHeight: 40 }} onClick={()=>window.open(`/participant?room=${roomCode}`,"_blank")}>🖥 {t('hostHeader.openDisplayScreen')}</button>
+          <button className="btn-secondary" style={{ fontSize:"0.75rem", minHeight: 40 }} onClick={()=>window.open(`/display?room=${roomCode}`,"_blank","noopener")}>🖥 {t('hostHeader.openDisplayScreen')}</button>
         </div>
       </div>
     </div>

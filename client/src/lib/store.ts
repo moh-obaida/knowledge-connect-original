@@ -86,8 +86,8 @@ export interface RoomState {
 }
 
 // ── Arabic letter sets ────────────────────────────────────────
-const ARABIC_4x4 = ["أ","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط"];
-const ARABIC_5x5 = ["أ","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ع","غ","ف","ق","ك","ل","م","ن"];
+const ARABIC_4x4 = ["ا","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط"];
+const ARABIC_5x5 = ["ا","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ع","غ","ف","ق","ك","ل","م","ن"];
 const ARABIC_6x6 = [...ARABIC_5x5,"هـ","و","ي","ء","ؤ","ئ","ة","ى","لا","آ","إ"];
 const ENGLISH_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -149,8 +149,8 @@ export function defaultRoomState(roomCode: string): RoomState {
     winningMode: "path",
     timerSetting: 0,
     stealMode: "none",
-    team1: { name: "الفريق الأزرق", color: "#2563eb", initials: "ز" },
-    team2: { name: "الفريق الأحمر", color: "#ef4444", initials: "ح" },
+    team1: { name: "الفريق الأزرق", color: "#2563eb", initials: "أز" },
+    team2: { name: "الفريق الأحمر", color: "#ef4444", initials: "أح" },
     team1Score: 0,
     team2Score: 0,
     board: generateBoard(gridSize, cellLabelStyle),
