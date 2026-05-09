@@ -2,9 +2,18 @@
 // وصلة المعرفة — Data Models
 // ═══════════════════════════════════════════════════════════════
 
+import { normalizeTfCanonical } from "./questionTypes";
+
 export interface BoardCell {
   id: string;
+  /** @deprecated Prefer displayLetter — kept for Firebase / UI compatibility */
   label: string;
+  /** What the hex shows (may differ from letterKey only for أ→ا style display) */
+  displayLetter?: string;
+  /** Stable identity for matching imports, banks, and saves — never use grid index alone */
+  letterKey?: string;
+  /** Key used with question banks and active questions (usually equals letterKey) */
+  questionLetter?: string;
   position: number;
   row?: number;
   col?: number;
@@ -39,9 +48,132 @@ export interface Team {
 
 export type QuestionTypeValue = "fill" | "mcq" | "tf" | "image" | "open";
 
+/** Normalized question stored in cell.questionBank[] or room.questionBankByLetter */
+export type StoredQuestionItem = {
+  id: string;
+  letter?: string;
+  letterKey: string;
+  question: string;
+  answer: string;
+  type?: QuestionTypeValue;
+  choices?: string[];
+  category: string;
+  difficulty: "easy" | "medium" | "hard";
+  points: number;
+  hint: string;
+  explanation: string;
+  originalRowNumber?: number;
+  isActive?: boolean;
+  timeLimit?: number;
+  imageUrl?: string;
+};
+
+export function newQuestionId(): string {
+  return `q_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function questionDedupeSignature(q: Pick<StoredQuestionItem, "letterKey" | "question" | "answer">): string {
+  return `${q.letterKey}\u0001${q.question.trim()}\u0001${q.answer.trim()}`;
+}
+
+/** Coerce legacy / partial bank item; always sets letterKey + id */
+export function ensureStoredQuestion(
+  raw: Record<string, unknown> | undefined,
+  fallbackLetterKey: string,
+): StoredQuestionItem | null {
+  if (!raw) return null;
+  const question = String(raw.question ?? "").trim();
+  if (!question) return null;
+  const letterKey = normalizeBoardLetter(String(raw.letterKey ?? raw.letter ?? fallbackLetterKey));
+  const id = String(raw.id ?? "").trim() || newQuestionId();
+  let type: QuestionTypeValue =
+    raw.type === "mcq" || raw.type === "tf" || raw.type === "image" || raw.type === "open" ? raw.type : "fill";
+  const choices = Array.isArray(raw.choices) ? raw.choices.map((c) => String(c ?? "").trim()).filter(Boolean) : undefined;
+  let answer = String(raw.answer ?? "").trim();
+
+  if (!answer) {
+    if (type === "mcq" && choices && choices.length >= 2) {
+      answer = choices[0];
+    } else if (type === "tf") {
+      answer = "صح";
+    } else {
+      return null;
+    }
+  }
+
+  if (type === "tf") {
+    const canon = normalizeTfCanonical(answer);
+    if (canon) answer = canon;
+  }
+
+  if (type === "mcq" && choices && choices.length >= 2 && answer && !choices.includes(answer)) {
+    const loose = choices.find((c) => c.trim() === answer.trim());
+    if (loose) answer = loose;
+  }
+
+  const p = Number(raw.points);
+  const points = Number.isFinite(p) && p > 0 ? p : 10;
+
+  return {
+    id,
+    letter: String(raw.letter ?? letterKey),
+    letterKey,
+    question,
+    answer,
+    type,
+    choices,
+    category: String(raw.category ?? "").trim() || "غير مصنف",
+    difficulty:
+      raw.difficulty === "easy" || raw.difficulty === "hard" || raw.difficulty === "medium" ? raw.difficulty : "medium",
+    points,
+    hint: String(raw.hint ?? "").trim(),
+    explanation: String(raw.explanation ?? "").trim(),
+    originalRowNumber: typeof raw.originalRowNumber === "number" ? raw.originalRowNumber : undefined,
+    isActive: raw.isActive === false ? false : true,
+    timeLimit: typeof raw.timeLimit === "number" ? raw.timeLimit : undefined,
+    imageUrl: raw.imageUrl ? String(raw.imageUrl) : undefined,
+  };
+}
+
+/**
+ * Per-letter overflow when the board has no cell for that letterKey.
+ * When the host adds that letter to the board later, merge these into the matching cell's questionBank (optional UX).
+ */
+export type QuestionBankByLetter = Record<string, StoredQuestionItem[]>;
+
+export function getQuestionsForCell(cell: BoardCell, questionBankByLetter?: QuestionBankByLetter | null): StoredQuestionItem[] {
+  const key = getBoardLetterKey(cell);
+  const bank = Array.isArray((cell as BoardCell & { questionBank?: unknown }).questionBank)
+    ? ((cell as BoardCell & { questionBank: unknown[] }).questionBank as Record<string, unknown>[])
+    : [];
+  const local: StoredQuestionItem[] = [];
+  for (const q of bank) {
+    const item = ensureStoredQuestion(q as Record<string, unknown>, key);
+    if (!item) continue;
+    const qk = normalizeBoardLetter(item.letterKey);
+    if (qk !== key && qk) continue;
+    local.push(item);
+  }
+  const global = (questionBankByLetter?.[key] || []).filter((q) => q.isActive !== false);
+  const merged: StoredQuestionItem[] = [];
+  const seen = new Set<string>();
+  for (const q of [...local, ...global]) {
+    const sig = questionDedupeSignature(q);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    merged.push(q);
+  }
+  return merged;
+}
+
 export interface ActiveQuestion {
   cellId: string;
   cellLabel: string;
+  letterKey?: string;
+  questionLetter?: string;
+  questionId?: string;
+  /** Unique id for this «round» so clients can ignore stale submissions */
+  roundId?: string;
   question: string;
   answer: string;
   category: string;
@@ -63,7 +195,14 @@ export interface Player {
 }
 
 export const CURRENT_SCHEMA_VERSION = 2;
-export const CURRENT_BOARD_VERSION = "arabic-5x5-alif-v2";
+export const CURRENT_BOARD_VERSION = "arabic-letter-keys-v3";
+
+/** 28-letter Arabic sequence (ه as single letter, not هـ) */
+export const ARABIC_28 = [
+  "ا", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "ه", "و", "ي",
+] as const;
+
+export type ArabicLetterSet = "basic" | "extended" | "custom";
 
 export type RoomLifecycleStatus = "setup" | "active" | "paused" | "ended" | "archived";
 export type GameEventType =
@@ -130,6 +269,10 @@ export interface RoomState {
   gameStatus: "lobby" | "active" | "finished";
   gridSize: 4 | 5 | 6;
   cellLabelStyle: "arabic" | "english" | "numbers";
+  /** When cellLabelStyle is arabic: which letter sequence fills the grid */
+  arabicLetterSet?: ArabicLetterSet;
+  /** Comma- or whitespace-separated letters for custom mode (RTL text ok) */
+  customArabicLetters?: string;
   winningMode: "path" | "points" | "manual";
   timerSetting: number;
   stealMode: "none" | "steal" | "manual";
@@ -138,6 +281,8 @@ export interface RoomState {
   team1Score: number;
   team2Score: number;
   board: BoardCell[];
+  /** أسئلة للحروف غير الموجودة حالياً على اللوحة؛ تُدمج تلقائياً عند عرض الخانة إن وُجدت */
+  questionBankByLetter?: QuestionBankByLetter;
   selectedCellId: string;
   activeQuestion: ActiveQuestion | null;
   answerVisibleToHost: boolean;
@@ -167,46 +312,140 @@ export interface RoomState {
 }
 
 // ── Arabic letter sets ────────────────────────────────────────
-const ARABIC_4x4 = ["ا","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط"];
-const ARABIC_5x5 = ["ا","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ع","غ","ف","ق","ك","ل","م","ن"];
-const ARABIC_6x6 = [...ARABIC_5x5,"هـ","و","ي","ء","ؤ","ئ","ة","ى","لا","آ","إ"];
 const ENGLISH_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const LEGACY_DISPLAY_LETTERS: Record<string, string> = { "أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا" };
 
-export function normalizeLetterForDisplay(label: string): string {
-  return LEGACY_DISPLAY_LETTERS[label] || label;
+const TATWEEL_RE = /\u0640/g;
+const BOARD_INVISIBLE_RE = /[\u200C\u200D\uFEFF]/g;
+const BOARD_DIACRITICS_RE = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g;
+const BOARD_ALIF_VARIANTS: Record<string, string> = { أ: "ا", إ: "ا", آ: "ا", ٱ: "ا" };
+
+/** Strict identity for board cells: trim, strip tatweel/invisible/diacritics; أإآٱ→ا only; never ة↔ه nor ى↔ي */
+export function normalizeBoardLetter(value?: string): string {
+  let s = String(value ?? "")
+    .trim()
+    .replace(BOARD_INVISIBLE_RE, "")
+    .replace(TATWEEL_RE, "")
+    .replace(BOARD_DIACRITICS_RE, "");
+  const ch = s.charAt(0);
+  return BOARD_ALIF_VARIANTS[ch] || ch;
 }
 
-export function getDefaultLabels(gridSize: 4 | 5 | 6, style: RoomState["cellLabelStyle"]): string[] {
+export function normalizeLetterForDisplay(label: string): string {
+  const stripped = String(label).replace(TATWEEL_RE, "");
+  if (stripped === "ه" && label !== stripped) return "ه";
+  return LEGACY_DISPLAY_LETTERS[label] || LEGACY_DISPLAY_LETTERS[stripped] || stripped;
+}
+
+export function getBoardLetterKey(cell: Pick<BoardCell, "letterKey" | "label">): string {
+  const raw = cell.letterKey || cell.label || "";
+  return normalizeBoardLetter(raw);
+}
+
+export function getCellDisplayLetter(cell: Pick<BoardCell, "displayLetter" | "label">): string {
+  const d = (cell.displayLetter || cell.label || "").trim();
+  return normalizeLetterForDisplay(d);
+}
+
+export function getQuestionLetter(cell: Pick<BoardCell, "questionLetter" | "letterKey" | "label">): string {
+  if (cell.questionLetter && cell.questionLetter.trim()) return normalizeBoardLetter(cell.questionLetter);
+  return getBoardLetterKey(cell);
+}
+
+/** Ensures label + letter identity fields stay aligned (call after edits / load) */
+export function syncBoardCellLetters(cell: BoardCell): BoardCell {
+  const displaySource = (cell.displayLetter || cell.label || "").trim();
+  const letterKey = normalizeBoardLetter(cell.letterKey || cell.label || displaySource);
+  const displayLetter = normalizeLetterForDisplay(displaySource || letterKey);
+  const questionLetter = cell.questionLetter?.trim()
+    ? normalizeBoardLetter(cell.questionLetter)
+    : letterKey;
+  return {
+    ...cell,
+    label: displayLetter,
+    displayLetter,
+    letterKey,
+    questionLetter,
+  };
+}
+
+const ARABIC_GRID_SUPPLEMENT = ["ء", "ؤ", "ئ", "ة", "ى", "لا", "آ", "إ"] as const;
+
+export function getDefaultArabicLabels(
+  gridSize: 4 | 5 | 6,
+  letterSet: ArabicLetterSet = "basic",
+  customRaw?: string,
+): string[] {
+  const count = gridSize * gridSize;
+  if (letterSet === "custom") {
+    const parts = String(customRaw || "")
+      .split(/[\s,،]+/)
+      .map((p) => normalizeBoardLetter(p))
+      .filter(Boolean);
+    return Array.from({ length: count }, (_, i) => parts[i] || String(i + 1));
+  }
+
+  const basicSequentialFill = (): string[] => {
+    if (count <= ARABIC_28.length) {
+      return Array.from({ length: count }, (_, i) => ARABIC_28[i] as string);
+    }
+    const extra = count - ARABIC_28.length;
+    const pad = ARABIC_GRID_SUPPLEMENT.slice(0, extra);
+    return [...(ARABIC_28 as unknown as string[]), ...pad].slice(0, count);
+  };
+
+  if (letterSet === "basic") return basicSequentialFill();
+
+  // extended: ا…ك + ه،و،ي on 5×5 / 4×4 style boards; large grids use full alphabet + supplement
+  if (count >= 4 && count <= ARABIC_28.length) {
+    const headLen = count - 3;
+    const head = ARABIC_28.slice(0, headLen) as unknown as string[];
+    return [...head, "ه", "و", "ي"];
+  }
+  return basicSequentialFill();
+}
+
+export function getDefaultLabels(
+  gridSize: 4 | 5 | 6,
+  style: RoomState["cellLabelStyle"],
+  arabicLetterSet: ArabicLetterSet = "basic",
+  customArabicLetters?: string,
+): string[] {
   const count = gridSize * gridSize;
   if (style === "arabic") {
-    const src = gridSize === 4 ? ARABIC_4x4 : gridSize === 5 ? ARABIC_5x5 : ARABIC_6x6;
-    return Array.from({ length: count }, (_, i) => src[i] ?? String(i + 1));
+    return getDefaultArabicLabels(gridSize, arabicLetterSet, customArabicLetters);
   }
   if (style === "english") {
-    return Array.from({ length: count }, (_, i) => i < ENGLISH_LETTERS.length ? ENGLISH_LETTERS[i] : String(i + 1));
+    return Array.from({ length: count }, (_, i) => (i < ENGLISH_LETTERS.length ? ENGLISH_LETTERS[i] : String(i + 1)));
   }
   return Array.from({ length: count }, (_, i) => String(i + 1));
 }
 
-export function generateBoard(gridSize: 4 | 5 | 6, cellLabelStyle: RoomState["cellLabelStyle"]): BoardCell[] {
-  const labels = getDefaultLabels(gridSize, cellLabelStyle);
-  return labels.map((label, i) => ({
-    id: `cell-${i}`,
-    label,
-    position: i,
-    row: Math.floor(i / gridSize),
-    col: i % gridSize,
-    question: "",
-    answer: "",
-    category: "",
-    difficulty: "easy" as const,
-    points: 1,
-    hint: "",
-    explanation: "",
-    used: false,
-    claimedBy: 0 as const,
-  }));
+export function generateBoard(
+  gridSize: 4 | 5 | 6,
+  cellLabelStyle: RoomState["cellLabelStyle"],
+  options: { arabicLetterSet?: ArabicLetterSet; customArabicLetters?: string } = {},
+): BoardCell[] {
+  const arabicLetterSet = options.arabicLetterSet ?? "basic";
+  const labels = getDefaultLabels(gridSize, cellLabelStyle, arabicLetterSet, options.customArabicLetters);
+  return labels.map((label, i) =>
+    syncBoardCellLetters({
+      id: `cell-${i}`,
+      label,
+      position: i,
+      row: Math.floor(i / gridSize),
+      col: i % gridSize,
+      question: "",
+      answer: "",
+      category: "",
+      difficulty: "easy" as const,
+      points: 1,
+      hint: "",
+      explanation: "",
+      used: false,
+      claimedBy: 0 as const,
+    }),
+  );
 }
 
 export function shuffleBoard(board: BoardCell[]): BoardCell[] {
@@ -226,10 +465,10 @@ export function normalizeBoardForDisplay(board: BoardCell[], gridSize: RoomState
   if (!Array.isArray(board) || board.length === 0) return generateBoard(gridSize, "arabic");
   return board.map((cell, index) => {
     const position = typeof cell.position === "number" && Number.isFinite(cell.position) ? cell.position : index;
-    return {
+    const merged: BoardCell = {
       ...cell,
       id: cell.id || `cell-${index}`,
-      label: normalizeLetterForDisplay(cell.label || ""),
+      label: cell.label || "",
       position,
       row: typeof cell.row === "number" && Number.isFinite(cell.row) ? cell.row : Math.floor(position / gridSize),
       col: typeof cell.col === "number" && Number.isFinite(cell.col) ? cell.col : position % gridSize,
@@ -243,6 +482,7 @@ export function normalizeBoardForDisplay(board: BoardCell[], gridSize: RoomState
       used: Boolean(cell.used),
       claimedBy: cell.claimedBy === 1 || cell.claimedBy === 2 ? cell.claimedBy : 0,
     };
+    return syncBoardCellLetters(merged);
   });
 }
 
@@ -291,6 +531,8 @@ export function normalizeRoomState(raw: Partial<RoomState> | null): RoomState | 
     boardVersion: raw.boardVersion || "legacy",
     updatedAt: Number(raw.updatedAt || raw.createdAt || Date.now()),
     gridSize,
+    arabicLetterSet: (raw.arabicLetterSet as ArabicLetterSet) || base.arabicLetterSet || "basic",
+    customArabicLetters: raw.customArabicLetters ?? base.customArabicLetters ?? "",
     board: normalizeBoardForDisplay(raw.board || base.board, gridSize),
     team1: { ...base.team1, ...(raw.team1 || {}), id: "blue", direction: "left-right", score: raw.team1Score ?? raw.team1?.score ?? 0 },
     team2: { ...base.team2, ...(raw.team2 || {}), id: "red", direction: "top-bottom", score: raw.team2Score ?? raw.team2?.score ?? 0 },
@@ -301,8 +543,26 @@ export function normalizeRoomState(raw: Partial<RoomState> | null): RoomState | 
     questionHistory: Array.isArray(raw.questionHistory) ? raw.questionHistory.slice(-80) : base.questionHistory,
     participants: raw.participants || raw.players || {},
     analytics: { ...base.analytics!, ...(raw.analytics || {}) },
+    questionBankByLetter: sanitizeQuestionBankByLetter(raw.questionBankByLetter),
   };
   return merged;
+}
+
+function sanitizeQuestionBankByLetter(raw: unknown): QuestionBankByLetter {
+  if (!raw || typeof raw !== "object") return {};
+  const out: QuestionBankByLetter = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const key = normalizeBoardLetter(k);
+    if (!key) continue;
+    if (!Array.isArray(v)) continue;
+    const list: StoredQuestionItem[] = [];
+    for (const item of v) {
+      const q = ensureStoredQuestion(item as Record<string, unknown>, key);
+      if (q) list.push(q);
+    }
+    if (list.length) out[key] = list;
+  }
+  return out;
 }
 
 export function upgradeRoomBoardVersion(room: RoomState): Partial<RoomState> {
@@ -337,6 +597,8 @@ export function defaultRoomState(roomCode: string): RoomState {
     gameStatus: "lobby",
     gridSize,
     cellLabelStyle,
+    arabicLetterSet: "basic",
+    customArabicLetters: "",
     winningMode: "path",
     timerSetting: 0,
     stealMode: "none",
@@ -344,7 +606,7 @@ export function defaultRoomState(roomCode: string): RoomState {
     team2: { id: "red", name: "الفريق الأحمر", color: "#ef4444", initials: "أح", direction: "top-bottom", score: 0 },
     team1Score: 0,
     team2Score: 0,
-    board: generateBoard(gridSize, cellLabelStyle),
+    board: generateBoard(gridSize, cellLabelStyle, { arabicLetterSet: "basic" }),
     selectedCellId: "",
     activeQuestion: null,
     answerVisibleToHost: false,
@@ -390,6 +652,7 @@ export function defaultRoomState(roomCode: string): RoomState {
       reviewLetters: [],
       averageDurationMs: 0,
     },
+    questionBankByLetter: {},
   };
 }
 

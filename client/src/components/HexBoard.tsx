@@ -1,4 +1,4 @@
-import { normalizeLetterForDisplay, sortedBoard, type BoardCell, type Team } from "../lib/store";
+import { getBoardLetterKey, getCellDisplayLetter, sortedBoard, type BoardCell, type QuestionBankByLetter, type Team } from "../lib/store";
 
 // Regular flat-top hexagon, full-bleed inside the bounding box so adjacent
 // hexes share edges instead of leaving small triangular gaps.
@@ -15,11 +15,14 @@ interface HexBoardProps {
   winnerTeam?: 0 | 1 | 2;
   compact?: boolean;
   winningPathIds?: string[];
+  /** أسئلة احتياطية بحسب الحرف — تُحسب في وضع الإعداد لظهور ✓ على الخلايا */
+  questionBankByLetter?: QuestionBankByLetter | null;
 }
 
 export default function HexBoard({
   board, gridSize, mode, selectedCellId = "",
   team1, team2, onCellClick, compact = false, winningPathIds = [],
+  questionBankByLetter = null,
 }: HexBoardProps) {
   const sorted = sortedBoard(board);
   const safeGrid = ([4, 5, 6].includes(gridSize) ? gridSize : 5) as 4 | 5 | 6;
@@ -93,8 +96,13 @@ export default function HexBoard({
           const isSelected = cell.id === selectedCellId;
           const isWinning = winningSet.has(cell.id);
           const bank = (cell as any).questionBank;
-          const hasQ = !!cell.question.trim() || (Array.isArray(bank) && bank.some((q:any) => String(q?.question||"").trim()));
-          const visibleLabel = normalizeLetterForDisplay(cell.label);
+          const key = getBoardLetterKey(cell);
+          const globalN = (questionBankByLetter?.[key] || []).filter((q) => q.isActive !== false && String(q.question || "").trim()).length;
+          const hasQ =
+            !!cell.question.trim() ||
+            (Array.isArray(bank) && bank.some((q: any) => String(q?.question || "").trim())) ||
+            globalN > 0;
+          const visibleLabel = getCellDisplayLetter(cell);
 
           let bg = "linear-gradient(145deg, #fffdf6, #fff4df)";
           let border = "2px solid rgba(76,29,149,0.58)";
