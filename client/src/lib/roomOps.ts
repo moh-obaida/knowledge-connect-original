@@ -18,11 +18,18 @@ export async function roomExists(code: string): Promise<boolean> {
   return snap.exists();
 }
 
+const MAX_UNIQUE_CODE_ATTEMPTS = 10;
+
 export async function generateUniqueCode(): Promise<string> {
-  let code = randomCode();
-  let attempts = 0;
-  while ((await roomExists(code)) && attempts < 10) { code = randomCode(); attempts++; }
-  return code;
+  for (let attempt = 0; attempt < MAX_UNIQUE_CODE_ATTEMPTS; attempt++) {
+    const code = randomCode();
+    if (!(await roomExists(code))) return code;
+  }
+  // Bail out instead of silently returning a colliding code, which would let
+  // createRoom() overwrite an existing room in Firebase.
+  throw new Error(
+    `Failed to generate a unique room code after ${MAX_UNIQUE_CODE_ATTEMPTS} attempts.`,
+  );
 }
 
 export async function createRoom(code: string): Promise<RoomState> {
