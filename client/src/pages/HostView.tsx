@@ -20,6 +20,7 @@ import {
   getQuestionsForCell,
   newQuestionId,
   normalizeBoardLetter,
+  rebuildBoardPreservingBanks,
   syncBoardCellLetters,
   type ArabicLetterSet,
   type RoomState, type BoardCell, type ActiveQuestion, type Player, type GameEventType,
@@ -2644,6 +2645,11 @@ function GameSettings({ room, push }: { room: RoomState; push: (u: Partial<RoomS
             <textarea value={customLetters} onChange={e=>setCustomLetters(e.target.value)} rows={2} className="kc-input" placeholder="مثال: ا ب ت …" />
           </div>
         )}
+        {gs === 5 && cls === "arabic" && als === "extended" && (
+          <div style={{ gridColumn:"1 / -1", fontSize:"0.82rem", lineHeight:1.75, color:"#fcd34d", background:"rgba(245,158,11,0.12)", border:"1px solid rgba(245,158,11,0.35)", borderRadius:10, padding:"0.65rem 0.75rem" }}>
+            لوحة 5×5 تعرض 25 حرفاً فقط. الحروف غير الظاهرة في هذه المجموعة: ل، م، ن. ستبقى أسئلتها محفوظة في بنك الأسئلة ويمكن استخدامها عند اختيار مجموعة حروف أخرى.
+          </div>
+        )}
         <div><label style={lbl2}>نظام الفوز</label>
           <select value={wm} onChange={e=>setWm(e.target.value as RoomState["winningMode"])} className="kc-input">
             <option value="path">مسار (الفريق ١: يسار←يمين / الفريق ٢: أعلى←أسفل)</option>
@@ -2670,33 +2676,49 @@ function GameSettings({ room, push }: { room: RoomState; push: (u: Partial<RoomS
             cls !== room.cellLabelStyle ||
             (cls === "arabic" &&
               (als !== (room.arabicLetterSet || "basic") || customTrim !== (room.customArabicLetters || "").trim()));
-          const hasQuestions = room.board.some((cell) => {
-            const bank = (cell as any).questionBank;
-            return cell.question.trim() || (Array.isArray(bank) && bank.some((q:any) => String(q?.question || "").trim()));
-          });
-          if (labelLayoutChanged && hasQuestions && !window.confirm("تغيير اللوحة أو مجموعة الحروف سيعيد بناء الخلايا ويمسح أسئلتها الحالية. هل تريد المتابعة؟")) return;
+          const hasReserve = Object.values(room.questionBankByLetter || {}).some((items) =>
+            items.some((q) => String(q.question || "").trim()),
+          );
+          const hasQuestions =
+            room.board.some((cell) => {
+              const bank = (cell as any).questionBank;
+              return cell.question.trim() || (Array.isArray(bank) && bank.some((q: any) => String(q?.question || "").trim()));
+            }) || hasReserve;
+          if (labelLayoutChanged && hasQuestions && !window.confirm("تغيير اللوحة أو مجموعة الحروف سيعيد بناء الخلايا مع نقل الأسئلة إلى الحروف المطابقة، وحفظ أسئلة الحروف غير المعروضة في بنك الأسئلة الاحتياطي. هل تريد المتابعة؟")) return;
           const boardOpts = cls === "arabic" ? { arabicLetterSet: als, customArabicLetters: customTrim } : {};
-          push({
-            gridSize:gs,
-            cellLabelStyle:cls,
-            arabicLetterSet: cls === "arabic" ? als : room.arabicLetterSet || "basic",
-            customArabicLetters: cls === "arabic" ? customTrim : room.customArabicLetters || "",
-            winningMode:wm,
-            timerSetting:ts,
-            stealMode:sm,
-            gameTitle:gt,
-            logoText:lt,
-            ...(labelLayoutChanged
-              ? {
-                  board: generateBoard(gs, cls, boardOpts),
-                  selectedCellId:"",
-                  activeQuestion:null,
-                  questionStatus:"idle" as const,
-                  winnerMessage:"",
-                  winnerTeam:0 as const,
-                }
-              : {}),
-          });
+          if (labelLayoutChanged) {
+            const { board, questionBankByLetter } = rebuildBoardPreservingBanks(room, gs, cls, boardOpts);
+            void push({
+              gridSize: gs,
+              cellLabelStyle: cls,
+              arabicLetterSet: cls === "arabic" ? als : room.arabicLetterSet || "basic",
+              customArabicLetters: cls === "arabic" ? customTrim : room.customArabicLetters || "",
+              winningMode: wm,
+              timerSetting: ts,
+              stealMode: sm,
+              gameTitle: gt,
+              logoText: lt,
+              board,
+              questionBankByLetter,
+              selectedCellId: "",
+              activeQuestion: null,
+              questionStatus: "idle" as const,
+              winnerMessage: "",
+              winnerTeam: 0 as const,
+            });
+          } else {
+            void push({
+              gridSize: gs,
+              cellLabelStyle: cls,
+              arabicLetterSet: cls === "arabic" ? als : room.arabicLetterSet || "basic",
+              customArabicLetters: cls === "arabic" ? customTrim : room.customArabicLetters || "",
+              winningMode: wm,
+              timerSetting: ts,
+              stealMode: sm,
+              gameTitle: gt,
+              logoText: lt,
+            });
+          }
         }}>
         حفظ الإعدادات
       </button>

@@ -15,6 +15,7 @@ import {
   normalizeBoardLetter,
   normalizeLetterForDisplay,
   normalizeRoomState,
+  rebuildBoardPreservingBanks,
   shuffleBoard,
   upgradeRoomBoardVersion,
 } from "./store";
@@ -163,5 +164,19 @@ describe("هوية الحرف للوحة (ه، و، ي)", () => {
     for (const [id, key] of keysById) {
       expect(getBoardLetterKey(byId.get(id)!)).toBe(key);
     }
+  });
+});
+
+describe("إعادة بناء اللوحة مع الحفاظ على بنك الأسئلة", () => {
+  it("يحفظ أسئلة ل في questionBankByLetter عند الانتقال من مجموعة أساسية إلى موسعة 5×5", () => {
+    const base = defaultRoomState("preserve");
+    const boardBasic = generateBoard(5, "arabic", { arabicLetterSet: "basic" });
+    const لCell = boardBasic.find((c) => getBoardLetterKey(c) === "ل")!;
+    const board = boardBasic.map((c) => (c.id === لCell.id ? { ...c, question: "سؤال لام", answer: "لغة" } : c));
+    const room = { ...base, board };
+    const out = rebuildBoardPreservingBanks(room, 5, "arabic", { arabicLetterSet: "extended" });
+    expect(out.board.some((c) => getBoardLetterKey(c) === "ل")).toBe(false);
+    expect(out.questionBankByLetter["ل"]?.length).toBeGreaterThan(0);
+    expect(out.questionBankByLetter["ل"]?.[0]?.question).toBe("سؤال لام");
   });
 });
